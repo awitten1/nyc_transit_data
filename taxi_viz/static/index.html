@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NYC Taxi OD Flow</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: sans-serif; overflow: hidden; }
+
+    /* ── Toolbar ── */
+    #toolbar {
+      display: flex; align-items: center; gap: 14px;
+      padding: 0 16px; height: 50px;
+      background: #1e1e2e; color: #fff; position: relative; z-index: 2000;
+    }
+    #toolbar h1 { font-size: 15px; font-weight: 600; white-space: nowrap; }
+    #period-badge {
+      font-size: 12px; background: #2ecc71; padding: 3px 10px;
+      border-radius: 12px; white-space: nowrap;
+    }
+    #toolbar .spacer { flex: 1; }
+    #picker-btn {
+      font-size: 13px; padding: 5px 12px; border-radius: 4px;
+      border: 1px solid #555; background: #2e2e45; color: #eee;
+      cursor: pointer; white-space: nowrap;
+    }
+    #picker-btn:hover { background: #3d3d5c; }
+
+    /* ── Time-picker panel ── */
+    #picker-panel {
+      display: none; position: relative; z-index: 1999;
+      background: #1a1a2e; color: #ccc; padding: 12px 16px;
+      border-bottom: 1px solid #333; max-height: 240px; overflow-y: auto;
+    }
+    .year-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+    .year-label { font-size: 12px; font-weight: 700; color: #aaa; width: 38px; flex-shrink: 0; }
+    .month-pill {
+      font-size: 11px; padding: 3px 8px; border-radius: 12px;
+      border: 1px solid #444; background: #2a2a40; color: #ccc;
+      cursor: pointer; transition: background 0.15s, color 0.15s;
+    }
+    .month-pill:hover  { background: #3a3a58; color: #fff; }
+    .month-pill.range-start  { background: #2ecc71; border-color: #2ecc71; color: #fff; }
+    .month-pill.range-end    { background: #27ae60; border-color: #27ae60; color: #fff; }
+    .month-pill.in-range     { background: #1e7a47; border-color: #1e7a47; color: #ddd; }
+    .month-pill.pending      { background: #f39c12; border-color: #f39c12; color: #fff; }
+    #picker-hint { font-size: 11px; color: #888; margin-bottom: 8px; }
+    #reset-btn {
+      font-size: 11px; padding: 2px 8px; border-radius: 4px; margin-left: 8px;
+      border: 1px solid #555; background: #333; color: #ccc; cursor: pointer;
+    }
+    #reset-btn:hover { background: #444; }
+
+    /* ── Map ── */
+    #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    #map-wrap {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Layout: column flex ── */
+    #layout {
+      display: flex; flex-direction: column;
+      height: 100vh;
+    }
+    #toolbar { flex-shrink: 0; }
+    #picker-panel { flex-shrink: 0; }
+    #map-wrap { flex: 1; position: relative; }
+
+    /* ── Info panel ── */
+    #info-panel {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; background: rgba(255,255,255,0.95);
+      padding: 8px 16px; border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      font: 13px/1.5 sans-serif; text-align: center; pointer-events: none;
+      max-width: 420px;
+    }
+
+    /* ── Legend ── */
+    #legend {
+      position: absolute; bottom: 28px; right: 10px; z-index: 1000;
+      background: rgba(255,255,255,0.93); padding: 10px 14px;
+      border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+      font: 12px sans-serif;
+    }
+    #legend-bar {
+      height: 12px; width: 180px; margin: 5px 0;
+      background: linear-gradient(to right, #ffffb2, #fecc5c, #fd8d3c, #f03b20, #bd0026);
+    }
+    #legend-labels { display: flex; justify-content: space-between; color: #555; }
+    .no-data-swatch {
+      display: inline-block; width: 12px; height: 12px;
+      background: #d3d3d3; border-radius: 2px;
+      margin-right: 4px; vertical-align: middle;
+    }
+
+    /* ── Loading overlay ── */
+    #loading {
+      display: none; position: absolute; top: 10px; right: 10px; z-index: 1100;
+      background: rgba(30,30,46,0.88); color: #eee;
+      padding: 6px 14px; border-radius: 6px; font: 13px sans-serif;
+    }
+  </style>
+</head>
+<body>
+<div id="layout">
+  <div id="toolbar">
+    <h1>NYC Taxi OD Flow</h1>
+    <button id="period-badge"  onclick="togglePicker()">&#128197; —</span>
+    <div class="spacer"></div>
+    <!-- <button id="picker-btn" onclick="togglePicker()">Select Period ▼</button> -->
+  </div>
+
+  <div id="picker-panel"></div>
+
+  <div id="map-wrap">
+    <div id="map"></div>
+    <div id="info-panel">Loading data…</div>
+    <div id="legend">
+      <b>Avg Fare from hovered zone</b>
+      <div id="legend-bar"></div>
+      <div id="legend-labels"><span id="leg-min">—</span><span id="leg-max">—</span></div>
+      <div style="margin-top:6px;"><span class="no-data-swatch"></span>No trips recorded</div>
+    </div>
+    <div id="loading">Loading…</div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+var GEO = null;
+var MONTHS = [];
+var OD = {};
+var currentController = null;
+var layerById = {};
+var map = null;
+var pickerOpen = false;
+var pickerBuilt = false;
+
+// Range selection state
+var selStart = null;    // {year, month} — currently loaded start
+var selEnd   = null;    // {year, month} — currently loaded end
+var pendingStart = null; // {year, month} — first click, waiting for second
+
+// ── Color helpers ──────────────────────────────────────────────────────────
+var RAMP = ['#ffffb2','#fecc5c','#fd8d3c','#f03b20','#bd0026'];
+
+function hexToRgb(h) {
+  return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+}
+function lerpColor(a, b, t) {
+  var ra = hexToRgb(a), rb = hexToRgb(b);
+  return 'rgb('+[0,1,2].map(function(i){ return Math.round(ra[i]+(rb[i]-ra[i])*t); }).join(',')+')';
+}
+function scaleColor(val, min, max) {
+  var t = Math.max(0, Math.min(1, (val-min)/(max-min+0.001)));
+  var n = RAMP.length-1, i = Math.min(Math.floor(t*n), n-1);
+  return lerpColor(RAMP[i], RAMP[i+1], t*n-i);
+}
+
+// ── Map setup ─────────────────────────────────────────────────────────────
+function buildLeafletMap(geo) {
+  map = L.map('map').setView([40.72, -73.95], 11);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19
+  }).addTo(map);
+
+  var DEFAULT_STYLE = {fillColor:'#a0aec0', fillOpacity:0.4, weight:0.8, color:'white'};
+
+  L.geoJSON(geo, {
+    style: function() { return DEFAULT_STYLE; },
+    onEachFeature: function(feat, layer) {
+      layer.feature = feat;
+      layerById[feat.properties.LocationID] = layer;
+      layer.on({
+        mouseover: function() { onHover(feat.properties.LocationID, feat.properties.zone, layer); },
+        mouseout:  function() { onOut(); }
+      });
+    }
+  }).addTo(map);
+}
+
+// ── Hover logic (ported from notebook cell ssx7euhnlt) ────────────────────
+var DEFAULT_STYLE = {fillColor:'#a0aec0', fillOpacity:0.4, weight:0.8, color:'white'};
+
+function onHover(puId, puZone, hoveredLayer) {
+  var fares = OD[puId] || {};
+  var vals  = Object.values(fares).map(function(d){ return d.f; });
+  if (vals.length === 0) {
+    document.getElementById('info-panel').innerHTML = '<b>'+puZone+'</b><br>No outgoing trips recorded';
+    return;
+  }
+  var minF = Math.min.apply(null, vals), maxF = Math.max.apply(null, vals);
+  document.getElementById('leg-min').textContent = '$'+minF.toFixed(2);
+  document.getElementById('leg-max').textContent = '$'+maxF.toFixed(2);
+
+  Object.keys(layerById).forEach(function(doId) {
+    var d = fares[+doId], layer = layerById[doId];
+    if (d) {
+      layer.setStyle({fillColor: scaleColor(d.f, minF, maxF), fillOpacity: 0.8, weight: 0.5, color: 'white'});
+      layer.bindTooltip(
+        '<b>'+layer.feature.properties.zone+'</b><br>Avg fare: <b>$'+d.f+'</b><br>Trips: '+d.n,
+        {sticky: true, direction: 'auto'}
+      );
+    } else {
+      layer.setStyle({fillColor: '#d3d3d3', fillOpacity: 0.3, weight: 0.5, color: 'white'});
+      layer.unbindTooltip();
+    }
+  });
+  hoveredLayer.setStyle({weight: 2.5, color: '#333'});
+
+  var top3 = Object.entries(fares)
+    .sort(function(a,b){ return b[1].f - a[1].f; }).slice(0,3)
+    .map(function(e) {
+      var lyr = layerById[+e[0]];
+      return lyr ? lyr.feature.properties.zone : ('ID '+e[0]);
+    }).join(', ');
+
+  document.getElementById('info-panel').innerHTML =
+    '<b>Pickup: '+puZone+'</b> &nbsp;|&nbsp; '+vals.length+' dropoff zones'+
+    '<br><small>Highest fare to: '+top3+'</small>';
+}
+
+function onOut() {
+  Object.values(layerById).forEach(function(layer) {
+    layer.setStyle(DEFAULT_STYLE);
+    layer.unbindTooltip();
+  });
+  document.getElementById('leg-min').textContent = '—';
+  document.getElementById('leg-max').textContent = '—';
+  document.getElementById('info-panel').innerHTML = 'Hover over a pickup zone to see avg fares to all dropoff zones';
+}
+
+// ── Load OD data ───────────────────────────────────────────────────────────
+var MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function monthVal(y, m) { return y * 12 + m; }  // comparable integer
+
+async function loadOD(sy, sm, ey, em) {
+  if (currentController) currentController.abort();
+  currentController = new AbortController();
+
+  var url = '/api/od?start_year='+sy+'&start_month='+sm+'&end_year='+ey+'&end_month='+em;
+  var label = MONTH_NAMES[sm-1]+' '+sy + (sy===ey && sm===em ? '' : ' – '+MONTH_NAMES[em-1]+' '+ey);
+
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('info-panel').innerHTML = 'Loading '+label+'…';
+  onOut();
+
+  try {
+    var res = await fetch(url, {signal: currentController.signal});
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    var data = await res.json();
+    OD = data.od;
+    selStart = data.start;
+    selEnd   = data.end;
+    updatePeriodBadge();
+    updateRangePills();
+    document.getElementById('info-panel').innerHTML = 'Hover over a pickup zone to see avg fares to all dropoff zones';
+  } catch(e) {
+    if (e.name !== 'AbortError')
+      document.getElementById('info-panel').innerHTML = 'Error loading data.';
+  } finally {
+    document.getElementById('loading').style.display = 'none';
+    currentController = null;
+  }
+}
+
+// updatePeriodBadge(previewEnd?)
+//   no args          → show the currently loaded range (selStart–selEnd)
+//   previewEnd={...} → show pending start → hovered end (called during hover preview)
+function updatePeriodBadge(previewEnd) {
+  var badge = document.getElementById('period-badge');
+
+  if (pendingStart) {
+    var s = MONTH_NAMES[pendingStart.month-1]+' '+pendingStart.year;
+    if (previewEnd) {
+      // Two endpoints known — show full prospective range
+      var sv = monthVal(pendingStart.year, pendingStart.month);
+      var ev = monthVal(previewEnd.year,   previewEnd.month);
+      var start = sv <= ev ? pendingStart : previewEnd;
+      var end   = sv <= ev ? previewEnd   : pendingStart;
+      var ss = MONTH_NAMES[start.month-1]+' '+start.year;
+      var es = MONTH_NAMES[end.month-1]  +' '+end.year;
+      badge.textContent = '📅 '+ss+' – '+es;
+      badge.style.background = '#2ecc71';  // green preview
+    } else {
+      // Only start known — waiting for end click
+      badge.textContent = '📅 '+s+' → ?';
+      badge.style.background = '#f39c12';  // orange pending
+    }
+    return;
+  }
+
+  // No pending selection — show the loaded range
+  badge.style.background = '';  // reset to CSS default
+  if (!selStart) return;
+  var s = MONTH_NAMES[selStart.month-1]+' '+selStart.year;
+  var e = MONTH_NAMES[selEnd.month-1]  +' '+selEnd.year;
+  badge.textContent = '📅 '+(selStart.year===selEnd.year && selStart.month===selEnd.month ? s : s+' – '+e);
+}
+
+// ── Time picker ─────────────────────────────────────────────────────────────
+function buildPicker() {
+  if (pickerBuilt) return;
+  pickerBuilt = true;
+
+  var byYear = {};
+  MONTHS.forEach(function(m) {
+    if (!byYear[m.year]) byYear[m.year] = [];
+    byYear[m.year].push(m.month);
+  });
+
+  var html = '<div id="picker-hint">Click a <b>start</b> month, then an <b>end</b> month' +
+             '<button id="reset-btn" onclick="resetPending()">Reset</button></div>';
+  Object.keys(byYear).sort().forEach(function(yr) {
+    html += '<div class="year-row"><span class="year-label">'+yr+'</span>';
+    byYear[yr].forEach(function(mo) {
+      html += '<button class="month-pill" id="pill-'+yr+'-'+mo+'"' +
+              ' onclick="selectPill('+yr+','+mo+')"' +
+              ' onmouseover="previewPill('+yr+','+mo+')"' +
+              ' onmouseout="clearPreview()">'+MONTH_NAMES[mo-1]+'</button>';
+    });
+    html += '</div>';
+  });
+  document.getElementById('picker-panel').innerHTML = html;
+}
+
+function updateRangePills(previewEnd) {
+  document.querySelectorAll('.month-pill').forEach(function(el) {
+    el.classList.remove('range-start','range-end','in-range','pending');
+  });
+
+  // Show pending first-click in orange
+  if (pendingStart) {
+    var sp = document.getElementById('pill-'+pendingStart.year+'-'+pendingStart.month);
+    if (sp) sp.classList.add('pending');
+
+    // Optionally preview hovered end
+    if (previewEnd) {
+      var sv = monthVal(pendingStart.year, pendingStart.month);
+      var ev = monthVal(previewEnd.year, previewEnd.month);
+      if (ev < sv) { var tmp=sv; sv=ev; ev=tmp; }  // allow reverse drag
+      document.querySelectorAll('.month-pill').forEach(function(el) {
+        var p = el.id.replace('pill-','').split('-');
+        var v = monthVal(+p[0], +p[1]);
+        el.classList.remove('pending');
+        if      (v === sv) el.classList.add('range-start');
+        else if (v === ev) el.classList.add('range-end');
+        else if (v > sv && v < ev) el.classList.add('in-range');
+      });
+    }
+    return;
+  }
+
+  // Show loaded range in green
+  if (selStart && selEnd) {
+    var sv = monthVal(selStart.year, selStart.month);
+    var ev = monthVal(selEnd.year,   selEnd.month);
+    document.querySelectorAll('.month-pill').forEach(function(el) {
+      var p = el.id.replace('pill-','').split('-');
+      var v = monthVal(+p[0], +p[1]);
+      if      (v === sv) el.classList.add('range-start');
+      else if (v === ev) el.classList.add('range-end');
+      else if (v > sv && v < ev) el.classList.add('in-range');
+    });
+  }
+}
+
+function previewPill(year, month) {
+  if (!pendingStart) return;
+  var end = {year: year, month: month};
+  updateRangePills(end);
+  updatePeriodBadge(end);   // show prospective range in badge
+}
+function clearPreview() {
+  if (!pendingStart) return;
+  updateRangePills();
+  updatePeriodBadge();       // revert badge to "start → ?"
+}
+
+function selectPill(year, month) {
+  if (!pendingStart) {
+    // First click → set start, wait for end
+    pendingStart = {year: year, month: month};
+    document.getElementById('picker-hint').innerHTML =
+      'Now click an <b>end</b> month' +
+      '<button id="reset-btn" onclick="resetPending()">Reset</button>';
+    updateRangePills();
+    updatePeriodBadge();    // badge → "Jan 2023 → ?"
+  } else {
+    // Second click → determine order and load
+    var s = pendingStart, e = {year: year, month: month};
+    if (monthVal(e.year, e.month) < monthVal(s.year, s.month)) { var tmp=s; s=e; e=tmp; }
+    pendingStart = null;
+    document.getElementById('picker-hint').innerHTML =
+      'Click a <b>start</b> month, then an <b>end</b> month' +
+      '<button id="reset-btn" onclick="resetPending()">Reset</button>';
+    togglePicker(false);
+    loadOD(s.year, s.month, e.year, e.month);
+  }
+}
+
+function resetPending() {
+  pendingStart = null;
+  document.getElementById('picker-hint').innerHTML =
+    'Click a <b>start</b> month, then an <b>end</b> month' +
+    '<button id="reset-btn" onclick="resetPending()">Reset</button>';
+  updateRangePills();
+  updatePeriodBadge();    // badge reverts to loaded range
+}
+
+function togglePicker(forceState) {
+  var panel = document.getElementById('picker-panel');
+  pickerOpen = forceState !== undefined ? forceState : !pickerOpen;
+  if (pickerOpen) {
+    buildPicker();
+    updateRangePills();
+    panel.style.display = 'block';
+    document.getElementById('picker-btn').textContent = 'Select Period ▲';
+  } else {
+    panel.style.display = 'none';
+    document.getElementById('picker-btn').textContent = 'Select Period ▼';
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init() {
+  const [zonesResp, monthsResp] = await Promise.all([
+    fetch('/api/zones'),
+    fetch('/api/available_months')
+  ]);
+  GEO   = await zonesResp.json();
+  MONTHS = (await monthsResp.json()).months;
+
+  buildLeafletMap(GEO);
+
+  // Default: load the most recent single month (start == end)
+  var last = MONTHS[MONTHS.length - 1];
+  await loadOD(last.year, last.month, last.year, last.month);
+}
+
+init();
+</script>
+</body>
+</html>

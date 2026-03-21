@@ -1,1 +1,6 @@
 citibike_data.duckdb
+*.parquet
+node_modules/
+__pycache__/
+*.zip
+.claude

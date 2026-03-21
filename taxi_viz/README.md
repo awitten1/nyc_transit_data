@@ -12,6 +12,7 @@ nyc_transit_data/
 └── taxi_viz/                  # this directory
 ```
 Link to data: https://drive.google.com/file/d/15HwtvgCKyZPKIGthZ2gxNa7NolkCtH-h/view?usp=sharing
+
 The server expects taxi parquet files at `../data/yellow_taxi_records/` and the Citibike database at `../citibike_data.duckdb` relative to this directory. Citibike data is optional — the app runs without it.
 
 ## Setup

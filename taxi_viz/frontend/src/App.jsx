@@ -1,8 +1,11 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Toolbar from './components/Toolbar.jsx';
 import MapView from './components/MapView.jsx';
 import Legend from './components/Legend.jsx';
-import AnalysisPanel from './components/AnalysisPanel.jsx';
+import MapModeBar from './components/MapModeBar.jsx';
+import PulseSlider from './components/PulseSlider.jsx';
+import EdgeRangeSlider from './components/EdgeRangeSlider.jsx';
+import ModeShiftChart from './components/ModeShiftChart.jsx';
 
 async function apiFetch(path) {
   const res = await fetch(path);
@@ -19,15 +22,23 @@ export default function App() {
   // ── Dynamic data (reloaded on range change) ────────────────────────────────
   const [od, setOd] = useState(null);
   const [citibike, setCitibike] = useState(null);
+  const [hourlyOd, setHourlyOd] = useState(null);
+  const [citibikeHourly, setCitibikeHourly] = useState(null);
+  const [pressure, setPressure] = useState(null);
+  const [hourlyPressure, setHourlyPressure] = useState(null);
 
   // ── UI state ───────────────────────────────────────────────────────────────
-  const [selRange, setSelRange] = useState(null); // {start: {year,month}, end: {year,month}}
+  const [selRange, setSelRange] = useState(null);
   const [hoveredInfo, setHoveredInfo] = useState(null);
-  const [selectedZone, setSelectedZone] = useState(null); // {id, name}
-  const [temporalData, setTemporalData] = useState(null);
+  const [selectedZone, setSelectedZone] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [taxiViz, setTaxiViz] = useState('edge'); // 'edge' | 'zone'
+  const [edgeRange, setEdgeRange] = useState([0, 100]);
+  const [showPressure, setShowPressure] = useState(true);
+  const [showTaxi, setShowTaxi] = useState(true);
+  const [showBike, setShowBike] = useState(true);
+  const [pulseHour, setPulseHour] = useState(12);
 
-  // Ref for map.invalidateSize callback
   const invalidateSizeRef = useRef(null);
 
   // ── Init: load static data ────────────────────────────────────────────────
@@ -41,18 +52,14 @@ export default function App() {
       const mList = monthsData.months ?? [];
       setMonths(mList);
       setCbMonths(cbData.months ?? []);
-
-      // Auto-select last available month as default range
       if (mList.length > 0) {
         const last = mList[mList.length - 1];
         setSelRange({ start: last, end: last });
       }
-    }).catch(err => {
-      console.error('Failed to load initial data:', err);
-    });
+    }).catch(err => console.error('Failed to load initial data:', err));
   }, []);
 
-  // ── Load OD + citibike data when range changes ─────────────────────────────
+  // ── Load data when range changes ───────────────────────────────────────────
   const loadRange = useCallback(async (range) => {
     if (!range?.start || !range?.end) return;
     const { start, end } = range;
@@ -65,22 +72,39 @@ export default function App() {
 
     setLoading(true);
     try {
-      const [odData, cbData] = await Promise.allSettled([
+      const [odData, cbData, hourlyOdData, pressureData, cbHourlyData, hourlyPressureData] = await Promise.allSettled([
         apiFetch(`/api/od?${params}`),
         apiFetch(`/api/citibike?${params}`),
+        apiFetch(`/api/hourly_od?${params}`),
+        apiFetch(`/api/pressure?${params}`),
+        apiFetch(`/api/citibike_hourly?${params}`),
+        apiFetch(`/api/hourly_pressure?${params}`),
       ]);
 
-      if (odData.status === 'fulfilled') {
-        setOd(odData.value.od ?? null);
+      setOd(odData.status === 'fulfilled' ? (odData.value.od ?? null) : null);
+      setCitibike(cbData.status === 'fulfilled' ? cbData.value : null);
+
+      if (hourlyOdData.status === 'fulfilled') {
+        const hod = hourlyOdData.value;
+        setHourlyOd(Object.keys(hod.by_hour ?? {}).length > 0 ? hod : null);
       } else {
-        console.warn('OD data unavailable:', odData.reason);
-        setOd(null);
+        setHourlyOd(null);
       }
 
-      if (cbData.status === 'fulfilled') {
-        setCitibike(cbData.value);
+      setPressure(pressureData.status === 'fulfilled' ? pressureData.value : null);
+
+      if (cbHourlyData.status === 'fulfilled') {
+        const cbh = cbHourlyData.value;
+        setCitibikeHourly(Object.keys(cbh.by_hour ?? {}).length > 0 ? cbh : null);
       } else {
-        setCitibike(null);
+        setCitibikeHourly(null);
+      }
+
+      if (hourlyPressureData.status === 'fulfilled') {
+        const hp = hourlyPressureData.value;
+        setHourlyPressure(Object.keys(hp.by_hour ?? {}).length > 0 ? hp : null);
+      } else {
+        setHourlyPressure(null);
       }
     } finally {
       setLoading(false);
@@ -91,47 +115,14 @@ export default function App() {
     if (selRange) loadRange(selRange);
   }, [selRange, loadRange]);
 
-  // ── Load temporal data on zone click ──────────────────────────────────────
-  useEffect(() => {
-    if (!selectedZone || !selRange) {
-      setTemporalData(null);
-      return;
-    }
-
-    const { start, end } = selRange;
-    const params = new URLSearchParams({
-      zone_id:     selectedZone.id,
-      start_year:  start.year,
-      start_month: start.month,
-      end_year:    end.year,
-      end_month:   end.month,
-    });
-
-    setTemporalData(null);
-    apiFetch(`/api/temporal?${params}`)
-      .then(data => setTemporalData(data))
-      .catch(err => {
-        console.error('Failed to load temporal data:', err);
-        setTemporalData({ _error: true, message: err.message });
-      });
-  }, [selectedZone, selRange]);
-
   // ── Handlers ──────────────────────────────────────────────────────────────
   function handleRangeChange(start, end) {
     setSelRange({ start, end });
     setSelectedZone(null);
-    setTemporalData(null);
   }
 
   function handleZoneClick(zone) {
-    setSelectedZone(zone);
-  }
-
-  function handlePanelClose() {
-    setSelectedZone(null);
-    setTemporalData(null);
-    // Invalidate map size after panel closes
-    setTimeout(() => invalidateSizeRef.current?.(), 260);
+    setSelectedZone(prev => prev?.id === zone.id ? null : zone);
   }
 
   return (
@@ -145,52 +136,84 @@ export default function App() {
       />
 
       <div className="main-area">
-        <div className="map-wrapper">
-          <MapView
-            geo={geo}
-            od={od}
-            citibike={citibike}
-            selectedZoneId={selectedZone?.id ?? null}
-            onHoverChange={setHoveredInfo}
-            onZoneClick={handleZoneClick}
-            invalidateSizeRef={invalidateSizeRef}
-          />
+        <div className="map-col">
+          <div className="map-wrapper">
+            <MapModeBar
+              showPressure={showPressure}
+              onTogglePressure={() => setShowPressure(p => !p)}
+              showTaxi={showTaxi}
+              onToggleTaxi={() => setShowTaxi(p => !p)}
+              taxiViz={taxiViz}
+              onSetTaxiViz={setTaxiViz}
+              showBike={showBike}
+              onToggleBike={() => setShowBike(p => !p)}
+            />
+            <PulseSlider hour={pulseHour} onHourChange={setPulseHour} />
 
-          <Legend
-            od={od}
-            citibike={citibike}
-            hoveredInfo={hoveredInfo}
-          />
+            {(showTaxi || showBike) && (
+              <EdgeRangeSlider value={edgeRange} onChange={setEdgeRange} />
+            )}
 
-          {!selRange && (
-            <div className="info-overlay">
-              <div className="info-overlay-content">
-                <div className="info-overlay-title">NYC Transit Explorer</div>
-                <div className="info-overlay-body">
-                  Loading data…
+            <MapView
+              geo={geo}
+              od={od}
+              citibike={citibike}
+              hourlyOd={hourlyOd}
+              citibikeHourly={citibikeHourly}
+              pressure={pressure}
+              hourlyPressure={hourlyPressure}
+              taxiViz={taxiViz}
+              showPressure={showPressure}
+              showTaxi={showTaxi}
+              showBike={showBike}
+              pulseHour={pulseHour}
+              edgeRange={edgeRange}
+              selectedZoneId={selectedZone?.id ?? null}
+              onHoverChange={setHoveredInfo}
+              onZoneClick={handleZoneClick}
+              invalidateSizeRef={invalidateSizeRef}
+            />
+
+            <Legend
+              od={od}
+              citibike={citibike}
+              hoveredInfo={hoveredInfo}
+              taxiViz={taxiViz}
+              showPressure={showPressure}
+              showTaxi={showTaxi}
+              showBike={showBike}
+              pressure={pressure}
+              hourlyPressure={hourlyPressure}
+              citibikeHourly={citibikeHourly}
+            />
+
+            {!selRange && (
+              <div className="info-overlay">
+                <div className="info-overlay-content">
+                  <div className="info-overlay-title">NYC Transit Explorer</div>
+                  <div className="info-overlay-body">Loading data…</div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {selRange && !od && !loading && (
-            <div className="info-overlay info-overlay--hint">
-              <div className="info-overlay-content">
-                No taxi data available for this period.
+            {selRange && !od && !loading && (
+              <div className="info-overlay info-overlay--hint">
+                <div className="info-overlay-content">
+                  No taxi data available for this period.
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        <AnalysisPanel
-          selectedZone={selectedZone}
-          temporalData={temporalData}
-          selRange={selRange}
-          months={months}
-          geo={geo}
-          onClose={handlePanelClose}
-          onInvalidateSize={() => invalidateSizeRef.current?.()}
-        />
+          <ModeShiftChart
+            hourlyOd={hourlyOd}
+            citibikeHourly={citibikeHourly}
+            pulseHour={pulseHour}
+            showTaxi={showTaxi}
+            showBike={showBike}
+            loading={loading}
+          />
+        </div>
       </div>
     </div>
   );

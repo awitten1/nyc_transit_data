@@ -1,7 +1,7 @@
 import React from 'react';
-import { TAXI_RAMP, BIKE_RAMP } from '../utils/colors.js';
+import { TAXI_RAMP, BIKE_RAMP, PRESSURE_RAMP } from '../utils/colors.js';
 
-function GradientBar({ ramp, label, minLabel, maxLabel }) {
+function GradientBar({ ramp, label, minLabel, maxLabel, midLabel }) {
   const gradient = `linear-gradient(to right, ${ramp.join(', ')})`;
   return (
     <div className="legend-gradient-block">
@@ -9,19 +9,22 @@ function GradientBar({ ramp, label, minLabel, maxLabel }) {
       <div className="legend-gradient-bar" style={{ background: gradient }} />
       <div className="legend-gradient-ticks">
         <span>{minLabel}</span>
+        {midLabel && <span>{midLabel}</span>}
         <span>{maxLabel}</span>
       </div>
     </div>
   );
 }
 
-export default function Legend({ od, citibike, hoveredInfo }) {
-  const hasTaxi = od && Object.keys(od).length > 0;
-  const hasBike = citibike?.zone_flows && Object.keys(citibike.zone_flows).length > 0;
+export default function Legend({ od, citibike, citibikeHourly, hourlyPressure, hoveredInfo, taxiViz, showPressure, showTaxi, showBike, pressure }) {
+  const hasTaxi    = od && Object.keys(od).length > 0;
+  const hasBike    = citibike?.zone_flows && Object.keys(citibike.zone_flows).length > 0;
+  const isPulse    = taxiViz === 'edge';
+  const isPressure = showPressure;
 
-  if (!hasTaxi && !hasBike) return null;
+  if (!isPulse && !isPressure && !hasTaxi && !hasBike) return null;
 
-  // Compute global trip-count range for taxi legend labels
+  // Global trip-count range for flow mode labels
   let taxiMin = Infinity, taxiMax = -Infinity;
   if (hasTaxi) {
     for (const dests of Object.values(od)) {
@@ -49,23 +52,48 @@ export default function Legend({ od, citibike, hoveredInfo }) {
     return String(Math.round(n));
   }
 
+  function formatNet(n) {
+    const v = Math.abs(Math.round(n));
+    return (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v));
+  }
+
   return (
     <div className="legend-panel">
-      {hasTaxi && (
+      {((isPulse && showTaxi) || showBike) && (
+        <div className="legend-note" style={{ marginBottom: 4 }}>
+          Click a zone to reveal connections<br />
+          Line color = trip volume
+        </div>
+      )}
+      {isPulse && showTaxi && (
         <GradientBar
           ramp={TAXI_RAMP}
-          label="Taxi trips to destination"
-          minLabel={formatN(taxiMin)}
-          maxLabel={formatN(taxiMax)}
+          label="Taxi flow (selected hour)"
+          minLabel="fewer trips"
+          maxLabel="more trips"
         />
       )}
-      {hasBike && (
+      {showBike && citibikeHourly && (
         <GradientBar
           ramp={BIKE_RAMP}
-          label="Citibike trips"
-          minLabel={formatN(bikeMin)}
-          maxLabel={formatN(bikeMax)}
+          label="Citi Bike flow (selected hour)"
+          minLabel="fewer trips"
+          maxLabel="more trips"
         />
+      )}
+      {isPressure && (showTaxi || showBike) && (
+        <>
+          <GradientBar
+            ramp={PRESSURE_RAMP}
+            label="Net flow (color) · Total traffic (size)"
+            minLabel="net inflow"
+            midLabel="balanced"
+            maxLabel="net outflow"
+          />
+          <div className="legend-note" style={{ marginTop: 4 }}>
+            {showTaxi && '◆ taxi zone'}{showTaxi && showBike && '\u00a0\u00a0'}{showBike && '● bike station'}
+          </div>
+        </>
       )}
 
       {hoveredInfo && (
@@ -86,6 +114,12 @@ export default function Legend({ od, citibike, hoveredInfo }) {
             <div className="legend-hover-stat">
               <span className="legend-hover-icon bike-icon">🚲</span>
               {formatN(hoveredInfo.bikeFlows)} bike trips
+            </div>
+          )}
+          {isPressure && hoveredInfo.netFlow != null && (
+            <div className="legend-hover-stat">
+              <span className="legend-hover-icon">⚡</span>
+              Net outflow: {hoveredInfo.netFlow > 0 ? '+' : ''}{formatN(hoveredInfo.netFlow)}
             </div>
           )}
         </div>

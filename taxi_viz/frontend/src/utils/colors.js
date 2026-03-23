@@ -1,6 +1,14 @@
-export const TAXI_RAMP = ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20', '#bd0026'];
-export const BIKE_RAMP = ['#7bccc4', '#43a2ca', '#0868ac', '#084081', '#042040'];
-export const OD_PALETTE = ['#e41a1c', '#ff7f00', '#4daf4a', '#984ea3', '#377eb8'];
+export const TAXI_RAMP      = ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20', '#bd0026'];
+export const BIKE_RAMP      = ['#164e63', '#0891b2', '#22d3ee', '#a5f3fc', '#ecfeff'];
+export const OD_PALETTE     = ['#e41a1c', '#ff7f00', '#4daf4a', '#984ea3', '#377eb8'];
+// Warm orange→amber for taxi flow arrows (distinct from citibike teal/blue)
+export const TAXI_FLOW_RAMP  = ['#fed976', '#feb24c', '#fd8d3c', '#e31a1c', '#800026'];
+// Hover OD direction ramps: outgoing = orange/red, incoming = cyan/blue
+export const OUTGOING_RAMP   = ['#fed976', '#feb24c', '#fd8d3c', '#e31a1c', '#800026'];
+export const INCOMING_RAMP   = ['#c7e9b4', '#41b6c4', '#1d91c0', '#225ea8', '#0c2c84'];
+// Diverging teal→gray→orange for pressure nodes
+// teal = net inflow (sink), gray/white = balanced, orange = net outflow (source)
+export const PRESSURE_RAMP  = ['#0d9488', '#5eead4', '#e2e8f0', '#fdba74', '#ea580c'];
 
 /**
  * Interpolate a value into a color ramp.

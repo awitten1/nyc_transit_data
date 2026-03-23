@@ -32,6 +32,7 @@ html, body, #root {
 
 .map-wrapper {
   flex: 1;
+  min-height: 0;
   position: relative;
   overflow: hidden;
 }
@@ -378,6 +379,17 @@ html, body, #root {
   gap: 4px;
 }
 
+.legend-note {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.legend-gradient-ticks span:nth-child(2):not(:last-child) {
+  color: #64748b;
+}
+
 .legend-hover-name {
   font-size: 12px;
   font-weight: 600;
@@ -637,6 +649,303 @@ html, body, #root {
 /* Station dots */
 .station-dot {
   z-index: 700 !important;
+}
+
+/* ── Pulse flow animations ────────────────────────────────────────────────── */
+/* dashArray period = 12 + 16 = 28px */
+@keyframes taxiFlow {
+  to { stroke-dashoffset: -28; }
+}
+/* dashArray period = 6 + 10 = 16px */
+@keyframes bikeFlow {
+  to { stroke-dashoffset: -16; }
+}
+
+/* ── Map Mode Bar ─────────────────────────────────────────────────────────── */
+.map-mode-bar {
+  position: absolute;
+  top: 10px;
+  left: 60px;
+  z-index: 510;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: all;
+}
+
+.map-mode-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.map-mode-sub-row {
+  display: flex;
+  gap: 2px;
+  padding-left: 2px;
+}
+
+.map-mode-sub-pill {
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(15,23,42,0.75);
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.map-mode-sub-pill:hover {
+  background: rgba(30,41,59,0.95);
+  color: #e2e8f0;
+}
+
+.map-mode-sub-pill.active {
+  background: rgba(249,115,22,0.2);
+  border-color: rgba(249,115,22,0.5);
+  color: #fdba74;
+}
+
+.map-mode-pill {
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(15,23,42,0.85);
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.map-mode-pill:hover {
+  background: rgba(30,41,59,0.95);
+  color: #e2e8f0;
+}
+
+.map-mode-pill.active {
+  background: rgba(91,106,240,0.25);
+  border-color: rgba(91,106,240,0.6);
+  color: #a5b4fc;
+}
+
+.map-mode-divider {
+  width: 1px;
+  height: 18px;
+  background: rgba(255,255,255,0.15);
+  margin: 0 2px;
+  align-self: center;
+}
+
+/* ── Pulse Slider ─────────────────────────────────────────────────────────── */
+.pulse-slider {
+  position: absolute;
+  top: 44px;
+  left: 60px;
+  z-index: 510;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15,23,42,0.85);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 6px 10px;
+  backdrop-filter: blur(6px);
+  pointer-events: all;
+}
+
+.pulse-play-btn {
+  background: none;
+  border: none;
+  color: #a5b4fc;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+}
+
+.pulse-play-btn:hover {
+  color: #e2e8f0;
+}
+
+.pulse-range {
+  width: 160px;
+  accent-color: #6366f1;
+  cursor: pointer;
+}
+
+.pulse-label {
+  font-size: 12px;
+  color: #94a3b8;
+  min-width: 38px;
+  text-align: right;
+}
+
+/* ── Map column (map + chart stacked) ────────────────────────────────────── */
+.map-col {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Mode Shift Chart ─────────────────────────────────────────────────────── */
+.mode-shift-panel {
+  flex-shrink: 0;
+  background: #12172a;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding: 6px 16px 4px;
+}
+
+.mode-shift-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.mode-shift-wrap {
+  width: 100%;
+}
+
+.mode-shift-svg {
+  display: block;
+}
+
+.mode-shift-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+}
+
+.mode-shift-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #334155;
+  border-top-color: #f97316;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.mode-shift-loading-text {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.mode-shift-legend {
+  display: flex;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.mode-shift-key {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.mode-shift-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0.8;
+}
+
+/* ── Edge Range Slider ────────────────────────────────────────────────────── */
+.edge-range-slider {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 510;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.82);
+  padding: 12px 10px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  backdrop-filter: blur(4px);
+}
+
+.edge-range-label {
+  font-size: 10px;
+  color: #94a3b8;
+  user-select: none;
+}
+
+.edge-range-track {
+  position: relative;
+  width: 20px;
+  cursor: pointer;
+}
+
+.edge-range-bg {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 0; bottom: 0;
+  width: 4px;
+  background: #1e293b;
+  border-radius: 2px;
+}
+
+.edge-range-fill {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  background: #f97316;
+  border-radius: 2px;
+}
+
+.edge-range-thumb {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #1e293b;
+  border: 2px solid #f97316;
+  cursor: grab;
+  user-select: none;
+  z-index: 2;
+}
+
+.edge-range-thumb:active {
+  cursor: grabbing;
+  background: #f97316;
+}
+
+.edge-range-tip {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  color: #94a3b8;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.edge-range-tip--left {
+  right: calc(100% + 5px);
 }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NYC Subway O-D Explorer</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; }
+
+  #controls {
+    display: flex; align-items: center; gap: 16px;
+    padding: 10px 20px; background: #16213e; border-bottom: 1px solid #0f3460;
+    flex-wrap: wrap;
+  }
+  #controls label { font-size: 13px; color: #a0a0c0; }
+  #controls select, #controls input {
+    background: #1a1a2e; color: #e0e0e0; border: 1px solid #0f3460;
+    padding: 4px 8px; border-radius: 4px; font-size: 13px;
+  }
+  #controls .group { display: flex; align-items: center; gap: 6px; }
+  #controls button {
+    background: #e94560; color: white; border: none; padding: 6px 14px;
+    border-radius: 4px; cursor: pointer; font-size: 13px;
+  }
+  #controls button:hover { background: #c73e54; }
+  #controls button.secondary { background: #0f3460; }
+  #controls button.secondary:hover { background: #1a4a8a; }
+
+  #maps-container { display: flex; height: calc(100vh - 90px); }
+  .map-panel { flex: 1; position: relative; }
+  .map-panel .map { width: 100%; height: 100%; }
+  .map-label {
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    z-index: 1000; background: rgba(22, 33, 62, 0.9); padding: 6px 16px;
+    border-radius: 4px; font-size: 14px; font-weight: 600;
+    border: 1px solid #0f3460; pointer-events: none;
+  }
+  .map-label.select { color: #e94560; }
+  .map-label.result { color: #00d2ff; }
+  .divider { width: 3px; background: #0f3460; cursor: col-resize; }
+
+  #status {
+    padding: 6px 20px; background: #16213e; border-top: 1px solid #0f3460;
+    font-size: 12px; color: #a0a0c0; display: flex; justify-content: space-between;
+  }
+
+  .mode-toggle {
+    display: flex; border-radius: 4px; overflow: hidden; border: 1px solid #0f3460;
+  }
+  .mode-toggle button {
+    background: #1a1a2e; color: #a0a0c0; border: none; padding: 4px 12px;
+    font-size: 12px; cursor: pointer;
+  }
+  .mode-toggle button.active { background: #e94560; color: white; }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <div class="group">
+    <label>Dataset:</label>
+    <div class="mode-toggle">
+      <button id="ds-subway" class="active" onclick="setDataset('subway')">Subway</button>
+      <button id="ds-citibike" onclick="setDataset('citibike')">Citibike</button>
+    </div>
+  </div>
+  <div class="group">
+    <label>Mode:</label>
+    <div class="mode-toggle">
+      <button id="mode-dest" class="active" onclick="setMode('dest')">Select Destinations</button>
+      <button id="mode-origin" onclick="setMode('origin')">Select Origins</button>
+    </div>
+  </div>
+  <div class="group" id="member-filter" style="display:none">
+    <label>Rider:</label>
+    <select id="member-casual">
+      <option value="">All</option>
+      <option value="member">Member</option>
+      <option value="casual">Casual</option>
+    </select>
+  </div>
+  <div class="group">
+    <label>Month:</label>
+    <select id="month">
+      <option value="">All</option>
+      <option value="1">Jan</option><option value="2">Feb</option>
+      <option value="3">Mar</option><option value="4">Apr</option>
+      <option value="5">May</option><option value="6">Jun</option>
+      <option value="7">Jul</option><option value="8">Aug</option>
+      <option value="9">Sep</option><option value="10">Oct</option>
+      <option value="11">Nov</option><option value="12">Dec</option>
+    </select>
+  </div>
+  <div class="group">
+    <label>Day:</label>
+    <select id="day">
+      <option value="">All</option>
+      <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+      <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+    </select>
+  </div>
+  <div class="group">
+    <label>Hours:</label>
+    <select id="hour-start">
+      <option value="">All</option>
+    </select>
+    <span>–</span>
+    <select id="hour-end">
+      <option value="">All</option>
+    </select>
+  </div>
+  <div class="group">
+    <label>Map:</label>
+    <div class="mode-toggle">
+      <button id="btn-select" class="active" onclick="selectMode=true;updateSelectModeUI()">Select</button>
+      <button id="btn-pan" onclick="selectMode=false;updateSelectModeUI()">Pan</button>
+    </div>
+  </div>
+  <button class="secondary" onclick="clearSelection()">Clear Selection</button>
+  <button class="secondary" onclick="excludedIds.clear();renderResults(lastResultData)">Clear Exclusions</button>
+</div>
+
+<div id="maps-container">
+  <div class="map-panel">
+    <div class="map-label select" id="left-label">Select Destinations — drag to select</div>
+    <div id="map-left" class="map"></div>
+  </div>
+  <div class="divider"></div>
+  <div class="map-panel">
+    <div class="map-label result" id="right-label">Origins will appear here</div>
+    <div id="map-right" class="map"></div>
+  </div>
+</div>
+
+<div id="status">
+  <span id="status-left">0 stations selected</span>
+  <span id="status-right">Total ridership: —</span>
+</div>
+
+<script>
+const NYC_CENTER = [40.7128, -74.0060];
+const ZOOM = 11;
+
+// Populate hour selects
+for (let h = 0; h < 24; h++) {
+  const label = `${h.toString().padStart(2,'0')}:00`;
+  document.getElementById('hour-start').innerHTML += `<option value="${h}">${label}</option>`;
+  document.getElementById('hour-end').innerHTML += `<option value="${h}">${label}</option>`;
+}
+
+// Create maps
+const mapLeft = L.map('map-left', { zoomControl: false, boxZoom: false }).setView(NYC_CENTER, ZOOM);
+const mapRight = L.map('map-right', { zoomControl: false }).setView(NYC_CENTER, ZOOM);
+
+// Selection mode: when enabled, drag draws a selection rectangle instead of panning
+let selectMode = true;
+mapLeft.dragging.disable();
+
+function updateSelectModeUI() {
+  document.getElementById('btn-select').classList.toggle('active', selectMode);
+  document.getElementById('btn-pan').classList.toggle('active', !selectMode);
+  document.getElementById('map-left').style.cursor = selectMode ? 'crosshair' : 'grab';
+  if (selectMode) {
+    mapLeft.dragging.disable();
+  } else {
+    mapLeft.dragging.enable();
+  }
+}
+
+L.control.zoom({ position: 'bottomright' }).addTo(mapLeft);
+L.control.zoom({ position: 'bottomright' }).addTo(mapRight);
+
+const tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const tileAttr = '&copy; OpenStreetMap &copy; CARTO';
+L.tileLayer(tileUrl, { attribution: tileAttr }).addTo(mapLeft);
+L.tileLayer(tileUrl, { attribution: tileAttr }).addTo(mapRight);
+
+// Maps zoom and pan independently
+
+// State
+let dataset = 'subway'; // 'subway' or 'citibike'
+let allStations = [];
+let mode = 'dest'; // 'dest' = select destinations, show origins. 'origin' = reverse.
+let selectedIds = new Set();
+let excludedIds = new Set();
+let stationMarkersLeft = {};
+let resultMarkersRight = [];
+let lastResultData = [];
+let selectionRect = null;
+let dragStart = null;
+
+// Colors
+const DEFAULT_COLOR = '#4a5568';
+const SELECTED_COLOR = '#e94560';
+const RESULT_COLORS = ['#00d2ff', '#00b4d8', '#0096c7', '#0077b6', '#023e8a'];
+
+function getResultColor(ratio) {
+  // ratio 0-1, returns color from light blue to dark blue
+  const idx = Math.min(Math.floor(ratio * RESULT_COLORS.length), RESULT_COLORS.length - 1);
+  return RESULT_COLORS[idx];
+}
+
+// Load stations
+async function loadStations() {
+  const resp = await fetch(`/api/${dataset}/stations`);
+  allStations = await resp.json();
+  renderStationMarkers();
+}
+
+function setDataset(ds) {
+  dataset = ds;
+  document.getElementById('ds-subway').classList.toggle('active', ds === 'subway');
+  document.getElementById('ds-citibike').classList.toggle('active', ds === 'citibike');
+  document.getElementById('member-filter').style.display = ds === 'citibike' ? '' : 'none';
+  clearSelection();
+  loadStations();
+}
+
+function renderStationMarkers() {
+  // Clear existing
+  Object.values(stationMarkersLeft).forEach(m => mapLeft.removeLayer(m));
+  stationMarkersLeft = {};
+
+  allStations.forEach(s => {
+    const selected = selectedIds.has(s.station_id);
+    const marker = L.circleMarker([s.lat, s.lng], {
+      radius: selected ? 6 : 4,
+      fillColor: selected ? SELECTED_COLOR : DEFAULT_COLOR,
+      fillOpacity: selected ? 0.9 : 0.5,
+      color: selected ? '#ff6b81' : '#718096',
+      weight: selected ? 2 : 1,
+    });
+    marker.bindTooltip(s.station_name, { direction: 'top', offset: [0, -6] });
+    marker.on('click', () => toggleStation(s.station_id));
+    marker.addTo(mapLeft);
+    stationMarkersLeft[s.station_id] = marker;
+  });
+}
+
+function toggleStation(id) {
+  if (selectedIds.has(id)) {
+    selectedIds.delete(id);
+  } else {
+    selectedIds.add(id);
+  }
+  updateLeftMarkerStyles();
+  fetchResults();
+}
+
+function updateLeftMarkerStyles() {
+  allStations.forEach(s => {
+    const marker = stationMarkersLeft[s.station_id];
+    if (!marker) return;
+    const selected = selectedIds.has(s.station_id);
+    marker.setStyle({
+      radius: selected ? 6 : 4,
+      fillColor: selected ? SELECTED_COLOR : DEFAULT_COLOR,
+      fillOpacity: selected ? 0.9 : 0.5,
+      color: selected ? '#ff6b81' : '#718096',
+      weight: selected ? 2 : 1,
+    });
+    marker.setRadius(selected ? 6 : 4);
+  });
+  document.getElementById('status-left').textContent = `${selectedIds.size} station${selectedIds.size !== 1 ? 's' : ''} selected`;
+}
+
+// Rectangle drag selection on the left map using Leaflet events
+mapLeft.on('mousedown', (e) => {
+  if (!selectMode) return;
+  dragStart = e.latlng;
+  if (selectionRect) mapLeft.removeLayer(selectionRect);
+  selectionRect = L.rectangle([dragStart, dragStart], {
+    color: '#e94560', weight: 2, fillColor: '#e94560', fillOpacity: 0.15,
+    dashArray: '6 3',
+  }).addTo(mapLeft);
+});
+
+mapLeft.on('mousemove', (e) => {
+  if (!dragStart || !selectMode) return;
+  selectionRect.setBounds([dragStart, e.latlng]);
+});
+
+mapLeft.on('mouseup', (e) => {
+  if (!dragStart || !selectMode) return;
+  const bounds = L.latLngBounds(dragStart, e.latlng);
+  dragStart = null;
+
+  // If very small rectangle, treat as click (handled by marker click)
+  const size = mapLeft.latLngToContainerPoint(bounds.getNorthEast())
+    .distanceTo(mapLeft.latLngToContainerPoint(bounds.getSouthWest()));
+  if (size < 10) {
+    if (selectionRect) mapLeft.removeLayer(selectionRect);
+    return;
+  }
+
+  // Select stations within bounds
+  selectedIds.clear();
+  allStations.forEach(s => {
+    if (bounds.contains([s.lat, s.lng])) {
+      selectedIds.add(s.station_id);
+    }
+  });
+  updateLeftMarkerStyles();
+  fetchResults();
+});
+
+// Fetch results
+let fetchController = null;
+async function fetchResults() {
+  if (selectedIds.size === 0) {
+    clearResults();
+    return;
+  }
+
+  if (fetchController) fetchController.abort();
+  fetchController = new AbortController();
+
+  const ids = Array.from(selectedIds).join(',');
+  const params = new URLSearchParams();
+  const month = document.getElementById('month').value;
+  const day = document.getElementById('day').value;
+  const hourStart = document.getElementById('hour-start').value;
+  const hourEnd = document.getElementById('hour-end').value;
+
+  if (mode === 'dest') {
+    params.set('dest_ids', ids);
+  } else {
+    params.set('origin_ids', ids);
+  }
+  if (month) params.set('month', month);
+  if (day) params.set('day_of_week', day);
+  if (hourStart !== '' && hourEnd !== '') {
+    params.set('hour_start', hourStart);
+    params.set('hour_end', hourEnd);
+  }
+  if (dataset === 'citibike') {
+    const mc = document.getElementById('member-casual').value;
+    if (mc) params.set('member_casual', mc);
+  }
+
+  const direction = mode === 'dest' ? 'origins' : 'destinations';
+  const endpoint = `/api/${dataset}/${direction}`;
+
+  try {
+    const resp = await fetch(`${endpoint}?${params}`, { signal: fetchController.signal });
+    const data = await resp.json();
+    renderResults(data);
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error(e);
+  }
+}
+
+function clearResults() {
+  resultMarkersRight.forEach(m => mapRight.removeLayer(m));
+  resultMarkersRight = [];
+  lastResultData = [];
+  document.getElementById('status-right').textContent = 'Total ridership: —';
+  document.getElementById('right-label').textContent =
+    mode === 'dest' ? 'Origins will appear here' : 'Destinations will appear here';
+}
+
+function renderResults(data) {
+  resultMarkersRight.forEach(m => mapRight.removeLayer(m));
+  resultMarkersRight = [];
+  lastResultData = data;
+
+  if (data.length === 0) {
+    clearResults();
+    return;
+  }
+
+  const visible = data.filter(d => !excludedIds.has(d.station_id));
+  const maxRidership = visible.length > 0 ? Math.max(...visible.map(d => d.total_ridership)) : 1;
+  const totalRidership = visible.reduce((sum, d) => sum + d.total_ridership, 0);
+
+  data.forEach(d => {
+    const excluded = excludedIds.has(d.station_id);
+    const ratio = excluded ? 0 : d.total_ridership / maxRidership;
+    const radius = excluded ? 4 : 3 + ratio * 15;
+    const marker = L.circleMarker([d.lat, d.lng], {
+      radius,
+      fillColor: excluded ? '#555' : interpolateColor(ratio),
+      fillOpacity: excluded ? 0.3 : 0.75,
+      color: excluded ? '#777' : '#00d2ff',
+      weight: excluded ? 1 : (ratio > 0.5 ? 1.5 : 0.5),
+    });
+    const status = excluded ? ' (excluded)' : '';
+    marker.bindTooltip(
+      `<b>${d.station_name}</b>${status}<br>Ridership: ${Math.round(d.total_ridership).toLocaleString()}<br><i>Click to ${excluded ? 'include' : 'exclude'}</i>`,
+      { direction: 'top', offset: [0, -radius] }
+    );
+    marker.on('click', () => {
+      if (excludedIds.has(d.station_id)) {
+        excludedIds.delete(d.station_id);
+      } else {
+        excludedIds.add(d.station_id);
+      }
+      renderResults(lastResultData);
+    });
+    marker.addTo(mapRight);
+    resultMarkersRight.push(marker);
+  });
+
+  const label = mode === 'dest' ? 'Origins' : 'Destinations';
+  const exCount = data.length - visible.length;
+  const exLabel = exCount > 0 ? ` (${exCount} excluded)` : '';
+  document.getElementById('right-label').textContent = `${label}: ${visible.length} stations${exLabel}`;
+  document.getElementById('status-right').textContent =
+    `Total ridership: ${Math.round(totalRidership).toLocaleString()}`;
+}
+
+function interpolateColor(ratio) {
+  // From cool blue (low) to bright cyan/white (high)
+  const r = Math.round(0 + ratio * 100);
+  const g = Math.round(100 + ratio * 155);
+  const b = Math.round(180 + ratio * 75);
+  return `rgb(${r},${g},${b})`;
+}
+
+function setMode(newMode) {
+  mode = newMode;
+  document.getElementById('mode-dest').classList.toggle('active', mode === 'dest');
+  document.getElementById('mode-origin').classList.toggle('active', mode === 'origin');
+  document.getElementById('left-label').textContent =
+    mode === 'dest' ? 'Select Destinations — drag to select' : 'Select Origins — drag to select';
+  clearSelection();
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  if (selectionRect) { mapLeft.removeLayer(selectionRect); selectionRect = null; }
+  updateLeftMarkerStyles();
+  clearResults();
+}
+
+// Re-query on filter change
+['month', 'day', 'hour-start', 'hour-end', 'member-casual'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () => {
+    if (selectedIds.size > 0) fetchResults();
+  });
+});
+
+// Init
+loadStations();
+</script>
+</body>
+</html>

@@ -21,13 +21,18 @@
     padding: 4px 8px; border-radius: 4px; font-size: 13px;
   }
   #controls .group { display: flex; align-items: center; gap: 6px; }
-  #controls button {
-    background: #e94560; color: white; border: none; padding: 6px 14px;
+  /* Base: all buttons gray (inactive toggle state) */
+  #controls button, #delta-bar button {
+    background: #4a5568; color: #e0e0e0; border: none; padding: 6px 14px;
     border-radius: 4px; cursor: pointer; font-size: 13px;
   }
-  #controls button:hover { background: #c73e54; }
-  #controls button.secondary { background: #0f3460; }
-  #controls button.secondary:hover { background: #1a4a8a; }
+  #controls button:hover, #delta-bar button:hover { background: #5a6578; }
+
+  /* Active state: red */
+  #controls button.active, #delta-bar button.active {
+    background: #e94560; color: white;
+  }
+  #controls button.active:hover, #delta-bar button.active:hover { background: #c73e54; }
 
   #maps-container { display: flex; height: calc(100vh - 90px); }
   .map-panel { flex: 1; position: relative; }
@@ -50,11 +55,7 @@
   .mode-toggle {
     display: flex; border-radius: 4px; overflow: hidden; border: 1px solid #0f3460;
   }
-  .mode-toggle button {
-    background: #1a1a2e; color: #a0a0c0; border: none; padding: 4px 12px;
-    font-size: 12px; cursor: pointer;
-  }
-  .mode-toggle button.active { background: #e94560; color: white; }
+  .mode-toggle button { padding: 4px 12px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -63,8 +64,9 @@
   <div class="group">
     <label>Dataset:</label>
     <div class="mode-toggle">
-      <button id="ds-subway" class="active" onclick="setDataset('subway')">Subway</button>
-      <button id="ds-citibike" onclick="setDataset('citibike')">Citibike</button>
+      <button id="ds-subway" class="active" onclick="toggleDataset('subway')">Subway</button>
+      <button id="ds-citibike" onclick="toggleDataset('citibike')">Citibike</button>
+      <button id="ds-taxi" onclick="toggleDataset('taxi')">Taxi Zones</button>
     </div>
   </div>
   <div class="group">
@@ -98,6 +100,8 @@
     <label>Day:</label>
     <select id="day">
       <option value="">All</option>
+      <option value="Weekday">Weekday (M–F)</option>
+      <option value="Weekend">Weekend</option>
       <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
       <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
     </select>
@@ -119,8 +123,53 @@
       <button id="btn-pan" onclick="selectMode=false;updateSelectModeUI()">Pan</button>
     </div>
   </div>
-  <button class="secondary" onclick="clearSelection()">Clear Selection</button>
-  <button class="secondary" onclick="excludedIds.clear();renderResults(lastResultData)">Clear Exclusions</button>
+  <div class="group">
+    <label>Preset:</label>
+    <button onclick="applyPreset('weekday-morning-commute')">Weekday Morning</button>
+    <button onclick="applyPreset('weekday-evening-dispersal')">Evening Dispersal</button>
+    <button onclick="applyPreset('friday-night-out')">Friday Night Out</button>
+    <button onclick="applyPreset('weekend-daytime')">Weekend Daytime</button>
+    <button onclick="applyPreset('post-game-dispersal')">Post-Game</button>
+  </div>
+  <div class="group">
+    <button id="btn-delta" onclick="toggleDeltaMode()">Δ Compare</button>
+  </div>
+  <button onclick="clearSelection()">Clear Selection</button>
+  <button onclick="excludedIds.clear();reRenderResults()">Clear Exclusions</button>
+</div>
+
+<div id="delta-bar" style="display:none; padding:6px 20px; background:#16213e; border-bottom:1px solid #0f3460; display:none; align-items:center; gap:16px; flex-wrap:wrap;">
+  <span style="font-size:12px; color:#e94560; font-weight:600;">vs (B)</span>
+  <div class="group">
+    <label>Month:</label>
+    <select id="month-b">
+      <option value="">All</option>
+      <option value="1">Jan</option><option value="2">Feb</option>
+      <option value="3">Mar</option><option value="4">Apr</option>
+      <option value="5">May</option><option value="6">Jun</option>
+      <option value="7">Jul</option><option value="8">Aug</option>
+      <option value="9">Sep</option><option value="10">Oct</option>
+      <option value="11">Nov</option><option value="12">Dec</option>
+    </select>
+  </div>
+  <div class="group">
+    <label>Day:</label>
+    <select id="day-b">
+      <option value="">All</option>
+      <option value="Weekday">Weekday (M–F)</option>
+      <option value="Weekend">Weekend</option>
+      <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+      <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+    </select>
+  </div>
+  <div class="group">
+    <label>Hours:</label>
+    <select id="hour-start-b"><option value="">All</option></select>
+    <span>–</span>
+    <select id="hour-end-b"><option value="">All</option></select>
+  </div>
+  <button id="btn-normalize" onclick="toggleNormalize()" style="font-size:12px; padding:4px 10px;">÷ per hour</button>
+  <span style="font-size:11px; color:#a0a0c0">■ cyan = more in A &nbsp; ■ <span style="color:#ff6b35">orange</span> = more in B</span>
 </div>
 
 <div id="maps-container">
@@ -136,19 +185,22 @@
 </div>
 
 <div id="status">
-  <span id="status-left">0 stations selected</span>
-  <span id="status-right">Total ridership: —</span>
+  <span id="status-left">0 selected</span>
+  <span id="status-right">Total: —</span>
 </div>
 
 <script>
 const NYC_CENTER = [40.7128, -74.0060];
 const ZOOM = 11;
 
-// Populate hour selects
+// Populate hour selects (A and B)
 for (let h = 0; h < 24; h++) {
   const label = `${h.toString().padStart(2,'0')}:00`;
-  document.getElementById('hour-start').innerHTML += `<option value="${h}">${label}</option>`;
-  document.getElementById('hour-end').innerHTML += `<option value="${h}">${label}</option>`;
+  const opt = `<option value="${h}">${label}</option>`;
+  document.getElementById('hour-start').innerHTML += opt;
+  document.getElementById('hour-end').innerHTML += opt;
+  document.getElementById('hour-start-b').innerHTML += opt;
+  document.getElementById('hour-end-b').innerHTML += opt;
 }
 
 // Create maps
@@ -181,8 +233,13 @@ L.tileLayer(tileUrl, { attribution: tileAttr }).addTo(mapRight);
 // Maps zoom and pan independently
 
 // State
-let dataset = 'subway'; // 'subway' or 'citibike'
-let allStations = [];
+let activeDatasets = new Set(['subway']); // multiple can be active simultaneously
+let allStationsPerDataset = {};           // { subway: [...], citibike: [...], taxi: [...] }
+let taxiGeoJson = null;                   // raw GeoJSON for polygon rendering
+
+// Namespace helpers — keys are "ds:id" to avoid collisions across datasets
+function dsKey(ds, id) { return `${ds}:${id}`; }
+function dsOfKey(key) { return key.slice(0, key.indexOf(':')); }
 let mode = 'dest'; // 'dest' = select destinations, show origins. 'origin' = reverse.
 let selectedIds = new Set();
 let excludedIds = new Set();
@@ -203,29 +260,53 @@ function getResultColor(ratio) {
   return RESULT_COLORS[idx];
 }
 
-// Load stations
-async function loadStations() {
-  const resp = await fetch(`/api/${dataset}/stations`);
-  allStations = await resp.json();
-  renderStationMarkers();
+function updateDatasetButtons() {
+  ['subway', 'citibike', 'taxi'].forEach(ds => {
+    document.getElementById(`ds-${ds}`).classList.toggle('active', activeDatasets.has(ds));
+  });
+  document.getElementById('member-filter').style.display = activeDatasets.has('citibike') ? '' : 'none';
 }
 
-function setDataset(ds) {
-  dataset = ds;
-  document.getElementById('ds-subway').classList.toggle('active', ds === 'subway');
-  document.getElementById('ds-citibike').classList.toggle('active', ds === 'citibike');
-  document.getElementById('member-filter').style.display = ds === 'citibike' ? '' : 'none';
-  clearSelection();
-  loadStations();
+async function toggleDataset(ds) {
+  if (activeDatasets.has(ds)) {
+    // Remove this dataset's markers and selections
+    const stations = allStationsPerDataset[ds] || [];
+    stations.forEach(s => {
+      const key = dsKey(ds, s.station_id);
+      if (stationMarkersLeft[key]) { mapLeft.removeLayer(stationMarkersLeft[key]); delete stationMarkersLeft[key]; }
+      selectedIds.delete(key);
+    });
+    delete allStationsPerDataset[ds];
+    activeDatasets.delete(ds);
+    updateDatasetButtons();
+    updateLeftMarkerStyles();
+    if (selectedIds.size > 0) fetchResults(); else clearResults();
+  } else {
+    activeDatasets.add(ds);
+    updateDatasetButtons();
+    await loadDatasetStations(ds);
+  }
 }
 
-function renderStationMarkers() {
-  // Clear existing
-  Object.values(stationMarkersLeft).forEach(m => mapLeft.removeLayer(m));
-  stationMarkersLeft = {};
+async function loadDatasetStations(ds) {
+  const resp = await fetch(`/api/${ds}/stations`);
+  const stations = await resp.json();
+  allStationsPerDataset[ds] = stations;
+  if (ds === 'taxi') {
+    if (!taxiGeoJson) {
+      const geoResp = await fetch('/api/taxi/zones');
+      taxiGeoJson = await geoResp.json();
+    }
+    renderDatasetTaxiZones(stations);
+  } else {
+    renderDatasetStationMarkers(ds, stations);
+  }
+}
 
-  allStations.forEach(s => {
-    const selected = selectedIds.has(s.station_id);
+function renderDatasetStationMarkers(ds, stations) {
+  stations.forEach(s => {
+    const key = dsKey(ds, s.station_id);
+    const selected = selectedIds.has(key);
     const marker = L.circleMarker([s.lat, s.lng], {
       radius: selected ? 6 : 4,
       fillColor: selected ? SELECTED_COLOR : DEFAULT_COLOR,
@@ -234,37 +315,63 @@ function renderStationMarkers() {
       weight: selected ? 2 : 1,
     });
     marker.bindTooltip(s.station_name, { direction: 'top', offset: [0, -6] });
-    marker.on('click', () => toggleStation(s.station_id));
+    marker.on('click', () => toggleStation(key));
     marker.addTo(mapLeft);
-    stationMarkersLeft[s.station_id] = marker;
+    stationMarkersLeft[key] = marker;
   });
 }
 
-function toggleStation(id) {
-  if (selectedIds.has(id)) {
-    selectedIds.delete(id);
+function renderDatasetTaxiZones(stations) {
+  taxiGeoJson.features.forEach(feat => {
+    const zoneId = feat.properties.LocationID;
+    const key = dsKey('taxi', zoneId);
+    const selected = selectedIds.has(key);
+    const layer = L.geoJSON(feat, {
+      style: {
+        fillColor: selected ? SELECTED_COLOR : DEFAULT_COLOR,
+        fillOpacity: selected ? 0.6 : 0.3,
+        color: selected ? '#ff6b81' : '#718096',
+        weight: selected ? 2 : 1,
+      },
+      onEachFeature: (f, l) => {
+        l.bindTooltip(feat.properties.zone, { sticky: true });
+        l.on('mousedown', (e) => L.DomEvent.stopPropagation(e));
+        l.on('click', (e) => { L.DomEvent.stopPropagation(e); toggleStation(key); });
+      }
+    });
+    layer.addTo(mapLeft);
+    stationMarkersLeft[key] = layer;
+  });
+}
+
+function toggleStation(key) {
+  if (selectedIds.has(key)) {
+    selectedIds.delete(key);
   } else {
-    selectedIds.add(id);
+    selectedIds.add(key);
   }
   updateLeftMarkerStyles();
   fetchResults();
 }
 
 function updateLeftMarkerStyles() {
-  allStations.forEach(s => {
-    const marker = stationMarkersLeft[s.station_id];
-    if (!marker) return;
-    const selected = selectedIds.has(s.station_id);
-    marker.setStyle({
-      radius: selected ? 6 : 4,
-      fillColor: selected ? SELECTED_COLOR : DEFAULT_COLOR,
-      fillOpacity: selected ? 0.9 : 0.5,
-      color: selected ? '#ff6b81' : '#718096',
-      weight: selected ? 2 : 1,
+  for (const [ds, stations] of Object.entries(allStationsPerDataset)) {
+    const isTaxi = ds === 'taxi';
+    stations.forEach(s => {
+      const key = dsKey(ds, s.station_id);
+      const marker = stationMarkersLeft[key];
+      if (!marker) return;
+      const selected = selectedIds.has(key);
+      marker.setStyle({
+        fillColor: selected ? SELECTED_COLOR : DEFAULT_COLOR,
+        fillOpacity: selected ? (isTaxi ? 0.6 : 0.9) : (isTaxi ? 0.3 : 0.5),
+        color: selected ? '#ff6b81' : '#718096',
+        weight: selected ? 2 : 1,
+      });
+      if (marker.setRadius) marker.setRadius(selected ? 6 : 4);
     });
-    marker.setRadius(selected ? 6 : 4);
-  });
-  document.getElementById('status-left').textContent = `${selectedIds.size} station${selectedIds.size !== 1 ? 's' : ''} selected`;
+  }
+  document.getElementById('status-left').textContent = `${selectedIds.size} selected`;
 }
 
 // Rectangle drag selection on the left map using Leaflet events
@@ -296,58 +403,43 @@ mapLeft.on('mouseup', (e) => {
     return;
   }
 
-  // Select stations within bounds
+  // Select stations/zones within bounds (all active datasets)
   selectedIds.clear();
-  allStations.forEach(s => {
-    if (bounds.contains([s.lat, s.lng])) {
-      selectedIds.add(s.station_id);
-    }
-  });
+  for (const [ds, stations] of Object.entries(allStationsPerDataset)) {
+    stations.forEach(s => {
+      if (bounds.contains([s.lat, s.lng])) selectedIds.add(dsKey(ds, s.station_id));
+    });
+  }
   updateLeftMarkerStyles();
   fetchResults();
 });
 
-// Fetch results
+// Fetch results from all active datasets in parallel
 let fetchController = null;
 async function fetchResults() {
-  if (selectedIds.size === 0) {
-    clearResults();
-    return;
-  }
+  if (selectedIds.size === 0) { clearResults(); return; }
+  if (deltaMode) { fetchDeltaResults(); return; }
 
   if (fetchController) fetchController.abort();
   fetchController = new AbortController();
 
-  const ids = Array.from(selectedIds).join(',');
-  const params = new URLSearchParams();
+  const byDataset = groupSelectedByDataset();
+  const direction = mode === 'dest' ? 'origins' : 'destinations';
+  const idParam = mode === 'dest' ? 'dest_ids' : 'origin_ids';
   const month = document.getElementById('month').value;
   const day = document.getElementById('day').value;
-  const hourStart = document.getElementById('hour-start').value;
-  const hourEnd = document.getElementById('hour-end').value;
-
-  if (mode === 'dest') {
-    params.set('dest_ids', ids);
-  } else {
-    params.set('origin_ids', ids);
-  }
-  if (month) params.set('month', month);
-  if (day) params.set('day_of_week', day);
-  if (hourStart !== '' && hourEnd !== '') {
-    params.set('hour_start', hourStart);
-    params.set('hour_end', hourEnd);
-  }
-  if (dataset === 'citibike') {
-    const mc = document.getElementById('member-casual').value;
-    if (mc) params.set('member_casual', mc);
-  }
-
-  const direction = mode === 'dest' ? 'origins' : 'destinations';
-  const endpoint = `/api/${dataset}/${direction}`;
+  const hs = document.getElementById('hour-start').value;
+  const he = document.getElementById('hour-end').value;
+  const mc = document.getElementById('member-casual').value;
 
   try {
-    const resp = await fetch(`${endpoint}?${params}`, { signal: fetchController.signal });
-    const data = await resp.json();
-    renderResults(data);
+    const promises = Object.entries(byDataset).map(([ds, ids]) =>
+      fetch(`/api/${ds}/${direction}?${buildFilterParams(idParam, ids, month, day, hs, he, ds === 'citibike' ? mc : '')}`,
+        { signal: fetchController.signal })
+        .then(r => r.json())
+        .then(data => data.map(d => ({ ...d, _dataset: ds })))
+    );
+    renderResults((await Promise.all(promises)).flat());
   } catch (e) {
     if (e.name !== 'AbortError') console.error(e);
   }
@@ -357,7 +449,7 @@ function clearResults() {
   resultMarkersRight.forEach(m => mapRight.removeLayer(m));
   resultMarkersRight = [];
   lastResultData = [];
-  document.getElementById('status-right').textContent = 'Total ridership: —';
+  document.getElementById('status-right').textContent = 'Total: —';
   document.getElementById('right-label').textContent =
     mode === 'dest' ? 'Origins will appear here' : 'Destinations will appear here';
 }
@@ -372,32 +464,45 @@ function renderResults(data) {
     return;
   }
 
-  const visible = data.filter(d => !excludedIds.has(d.station_id));
+  const eKey = (d) => dsKey(d._dataset, d.station_id);
+  const visible = data.filter(d => !excludedIds.has(eKey(d)));
   const maxRidership = visible.length > 0 ? Math.max(...visible.map(d => d.total_ridership)) : 1;
   const totalRidership = visible.reduce((sum, d) => sum + d.total_ridership, 0);
 
   data.forEach(d => {
-    const excluded = excludedIds.has(d.station_id);
+    const k = eKey(d);
+    const excluded = excludedIds.has(k);
     const ratio = excluded ? 0 : d.total_ridership / maxRidership;
-    const radius = excluded ? 4 : 3 + ratio * 15;
-    const marker = L.circleMarker([d.lat, d.lng], {
-      radius,
-      fillColor: excluded ? '#555' : interpolateColor(ratio),
-      fillOpacity: excluded ? 0.3 : 0.75,
-      color: excluded ? '#777' : '#00d2ff',
-      weight: excluded ? 1 : (ratio > 0.5 ? 1.5 : 0.5),
-    });
     const status = excluded ? ' (excluded)' : '';
-    marker.bindTooltip(
-      `<b>${d.station_name}</b>${status}<br>Ridership: ${Math.round(d.total_ridership).toLocaleString()}<br><i>Click to ${excluded ? 'include' : 'exclude'}</i>`,
-      { direction: 'top', offset: [0, -radius] }
-    );
+    const tooltipHtml = `<b>${d.station_name}</b>${status}<br>${d._dataset === 'taxi' ? 'Trips' : 'Ridership'}: ${Math.round(d.total_ridership).toLocaleString()}<br><i>Click to ${excluded ? 'include' : 'exclude'}</i>`;
+
+    let marker;
+    if (d._dataset === 'taxi' && taxiGeoJson) {
+      const feat = taxiGeoJson.features.find(f => f.properties.LocationID === d.station_id);
+      if (!feat) return;
+      marker = L.geoJSON(feat, {
+        style: {
+          fillColor: excluded ? '#555' : interpolateColor(ratio),
+          fillOpacity: excluded ? 0.2 : 0.3 + ratio * 0.5,
+          color: excluded ? '#777' : '#00d2ff',
+          weight: excluded ? 1 : (ratio > 0.5 ? 2 : 1),
+        }
+      });
+      marker.bindTooltip(tooltipHtml, { sticky: true });
+    } else {
+      const radius = excluded ? 4 : 3 + ratio * 15;
+      marker = L.circleMarker([d.lat, d.lng], {
+        radius,
+        fillColor: excluded ? '#555' : interpolateColor(ratio),
+        fillOpacity: excluded ? 0.3 : 0.75,
+        color: excluded ? '#777' : '#00d2ff',
+        weight: excluded ? 1 : (ratio > 0.5 ? 1.5 : 0.5),
+      });
+      marker.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -radius] });
+    }
+
     marker.on('click', () => {
-      if (excludedIds.has(d.station_id)) {
-        excludedIds.delete(d.station_id);
-      } else {
-        excludedIds.add(d.station_id);
-      }
+      if (excludedIds.has(k)) excludedIds.delete(k); else excludedIds.add(k);
       renderResults(lastResultData);
     });
     marker.addTo(mapRight);
@@ -407,9 +512,9 @@ function renderResults(data) {
   const label = mode === 'dest' ? 'Origins' : 'Destinations';
   const exCount = data.length - visible.length;
   const exLabel = exCount > 0 ? ` (${exCount} excluded)` : '';
-  document.getElementById('right-label').textContent = `${label}: ${visible.length} stations${exLabel}`;
+  document.getElementById('right-label').textContent = `${label}: ${visible.length}${exLabel}`;
   document.getElementById('status-right').textContent =
-    `Total ridership: ${Math.round(totalRidership).toLocaleString()}`;
+    `Total: ${Math.round(totalRidership).toLocaleString()}`;
 }
 
 function interpolateColor(ratio) {
@@ -435,16 +540,452 @@ function clearSelection() {
   updateLeftMarkerStyles();
   clearResults();
 }
+const PRESETS = {
 
-// Re-query on filter change
-['month', 'day', 'hour-start', 'hour-end', 'member-casual'].forEach(id => {
+  // ─────────────────────────────────────────────────────────────────────────
+  // "Where do people come from to get to work?"
+  // mode: dest  →  pre-select Midtown destinations, map reveals residential origins
+  // delta removes weekend morning baseline to isolate pure commuter signal
+  // ─────────────────────────────────────────────────────────────────────────
+  'weekday-morning-commute': {
+    mode: 'dest',
+    month: '', day: 'Weekday', hourStart: 7, hourEnd: 9,
+    delta: true, normalizePerHour: true,
+    compare: { month: '', day: 'Weekend', hourStart: 7, hourEnd: 9 },
+    selections: {
+      subway: [
+        318,  // 34 St-Penn Station (1,2,3)
+        164,  // 34 St-Penn Station (A,C,E)
+        607,  // 34 St-Herald Sq (B,D,F,M,N,Q,R,W)
+        610,  // Grand Central-42 St (S,4,5,6,7)
+        611,  // Times Sq-42 St (N,Q,R,W,S,1,2,3,7)
+        609,  // Bryant Pk (B,D,F,M) / 5 Av (7)
+        225,  // 47-50 Sts-Rockefeller Ctr (B,D,F,M)
+        471,  // 34 St-Hudson Yards (7)
+      ],
+      taxi: [
+        161,  // Midtown Center
+        162,  // Midtown East
+        163,  // Midtown North
+        164,  // Midtown South
+        186,  // Penn Station/Madison Sq West
+        230,  // Times Sq/Theatre District
+        246,  // West Chelsea/Hudson Yards
+        100,  // Garment District
+      ],
+      citibike: [
+        '6517.08',  // W 42 St & 6 Ave
+        '6602.05',  // W 42 St & 8 Ave
+        '6551.02',  // W 44 St & 5 Ave
+        '6667.04',  // W 47 St & 6 Ave
+        '6364.10',  // 6 Ave & W 34 St
+        '6450.12',  // 8 Ave & W 33 St
+        '6626.11',  // W 48 St & Rockefeller Plaza
+        '6535.05',  // 10 Ave & W 34 St
+      ],
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // "Where does everyone actually live?"
+  // mode: origin  →  pre-select Midtown origins, map reveals residential destinations
+  // delta removes weekend evening baseline to isolate commute-home signal
+  // ─────────────────────────────────────────────────────────────────────────
+  'weekday-evening-dispersal': {
+    mode: 'origin',
+    month: '', day: 'Weekday', hourStart: 17, hourEnd: 20,
+    delta: true, normalizePerHour: true,
+    compare: { month: '', day: 'Weekend', hourStart: 17, hourEnd: 20 },
+    selections: {
+      subway: [
+        318,  // 34 St-Penn Station (1,2,3)
+        164,  // 34 St-Penn Station (A,C,E)
+        610,  // Grand Central-42 St
+        611,  // Times Sq-42 St
+        607,  // 34 St-Herald Sq
+        225,  // 47-50 Sts-Rockefeller Ctr
+      ],
+      taxi: [
+        161,  // Midtown Center
+        162,  // Midtown East
+        163,  // Midtown North
+        164,  // Midtown South
+        186,  // Penn Station/Madison Sq West
+        246,  // West Chelsea/Hudson Yards
+      ],
+      citibike: [
+        '6517.08',  // W 42 St & 6 Ave
+        '6551.02',  // W 44 St & 5 Ave
+        '6364.10',  // 6 Ave & W 34 St
+        '6667.04',  // W 47 St & 6 Ave
+        '6700.14',  // W 51 St & Rockefeller Plaza
+      ],
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // "Where do people CHOOSE to go when they're free?"
+  // mode: origin  →  pre-select neutral departure zones (offices, transit hubs)
+  //                  nightlife destinations EMERGE from the data — not pre-assumed
+  // delta against Monday night removes residential background noise
+  // ─────────────────────────────────────────────────────────────────────────
+  'friday-night-out': {
+    mode: 'origin',
+    month: '', day: 'Friday', hourStart: 18, hourEnd: 23,
+    delta: true, normalizePerHour: true,
+    compare: { month: '', day: 'Monday', hourStart: 18, hourEnd: 23 },
+    selections: {
+      subway: [
+        318,  // 34 St-Penn Station (1,2,3)
+        164,  // 34 St-Penn Station (A,C,E)
+        610,  // Grand Central-42 St
+        611,  // Times Sq-42 St
+        607,  // 34 St-Herald Sq
+      ],
+      taxi: [
+        161,  // Midtown Center
+        162,  // Midtown East
+        163,  // Midtown North
+        164,  // Midtown South
+        186,  // Penn Station/Madison Sq West
+      ],
+      citibike: [
+        '6517.08',  // W 42 St & 6 Ave
+        '6551.02',  // W 44 St & 5 Ave
+        '6364.10',  // 6 Ave & W 34 St
+        '6602.05',  // W 42 St & 8 Ave
+        '6667.04',  // W 47 St & 6 Ave
+      ],
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // "Which neighborhoods are alive when people have a free choice?"
+  // mode: origin  →  pre-select residential origins across all boroughs
+  //                  leisure destinations EMERGE — parks, markets, brunch corridors
+  // delta subtracts weekday lunch traffic to isolate leisure signal
+  // ─────────────────────────────────────────────────────────────────────────
+  'weekend-daytime': {
+    mode: 'origin',
+    month: '', day: 'Weekend', hourStart: 11, hourEnd: 16,
+    delta: true, normalizePerHour: true,
+    compare: { month: '', day: 'Weekday', hourStart: 11, hourEnd: 16 },
+    selections: {
+      subway: [
+        617,  // Atlantic Av-Barclays Ctr (B,D,N,Q,R,2,3,4,5) — South Brooklyn
+        339,  // Bergen St (2,3)
+        236,  // Bergen St (F,G)
+        237,  // Carroll St (F,G)
+        345,  // Crown Hts-Utica Av (3,4)
+        1,    // Astoria-Ditmars Blvd (N,W)
+        616,  // Jackson Hts-Roosevelt Av (E,F,M,R)
+        301,  // 181 St (1) — Washington Heights
+        144,  // Dyckman St (A) — Inwood
+      ],
+      taxi: [
+        52,   // Cobble Hill
+        61,   // Crown Heights North
+        62,   // Crown Heights South
+        7,    // Astoria
+        129,  // Jackson Heights
+        243,  // Washington Heights North
+        244,  // Washington Heights South
+        226,  // Sunnyside
+        227,  // Sunset Park East
+        228,  // Sunset Park West
+      ],
+      citibike: [
+        '4143.04',  // 3 Ave & Carroll St — Carroll Gardens
+        '4354.07',  // Atlantic Ave & Fort Greene Pl — Fort Greene
+        '3865.05',  // 3 St & Prospect Park West — Prospect Park
+        '4281.08',  // Bergen St & Flatbush Ave — Crown Heights edge
+        '4446.01',  // Bergen St & Smith St — Cobble Hill
+        '8069.01',  // Amsterdam Ave & W 152 St — Washington Heights
+        '8172.07',  // Amsterdam Ave & W 162 St — Washington Heights
+      ],
+    },
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // "How does the city move after a big game?"
+  // mode: origin  →  pre-select MSG / Barclays as origins
+  //                  map shows where fans actually scatter to
+  // delta against same hour on non-event weeknights isolates event-driven flow
+  // NOTE: requires `event` flag in data pipeline (not yet in CSV data)
+  // ─────────────────────────────────────────────────────────────────────────
+  'post-game-dispersal': {
+    mode: 'origin',
+    month: '', day: 'Weekday', hourStart: 21, hourEnd: 23,
+    delta: true, normalizePerHour: true,
+    compare: { month: '', day: 'Weekday', hourStart: 21, hourEnd: 23,
+               event: false },
+    selections: {
+      subway: [
+        318,  // 34 St-Penn Station (1,2,3) — MSG primary exit
+        164,  // 34 St-Penn Station (A,C,E)
+        607,  // 34 St-Herald Sq
+        617,  // Atlantic Av-Barclays Ctr (B,D,N,Q,R,2,3,4,5) — Barclays exit
+      ],
+      taxi: [
+        186,  // Penn Station/Madison Sq West — MSG zone
+        164,  // Midtown South
+        181,  // Park Slope — Barclays-adjacent
+        189,  // Prospect Heights — Barclays-adjacent
+      ],
+      citibike: [
+        '6450.12',  // 8 Ave & W 33 St — MSG exit block
+        '6492.08',  // 9 Ave & W 33 St
+        '6364.10',  // 6 Ave & W 34 St
+        '6535.05',  // 10 Ave & W 34 St
+      ],
+    },
+  },
+
+};
+async function applyPreset(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+
+  // Mode
+  if (p.mode) setMode(p.mode);
+
+  // A filters
+  document.getElementById('month').value = p.month ?? '';
+  document.getElementById('day').value = p.day ?? '';
+  document.getElementById('hour-start').value = p.hourStart ?? '';
+  document.getElementById('hour-end').value = p.hourEnd ?? '';
+
+  // Normalize per hour
+  const wantNormalize = p.normalizePerHour ?? false;
+  if (wantNormalize !== normalizePerHour) toggleNormalize();
+
+  // Delta mode + B filters
+  const wantDelta = !!(p.delta || p.compare);
+  if (wantDelta !== deltaMode) toggleDeltaMode();
+  if (p.compare) {
+    document.getElementById('month-b').value = p.compare.month ?? '';
+    document.getElementById('day-b').value = p.compare.day ?? '';
+    document.getElementById('hour-start-b').value = p.compare.hourStart ?? '';
+    document.getElementById('hour-end-b').value = p.compare.hourEnd ?? '';
+  }
+
+  // Pre-select stations/zones
+  const selEntries = Object.entries(p.selections || {}).filter(([, ids]) => ids.length > 0);
+  if (selEntries.length > 0) {
+    selectedIds.clear();
+    const loadPromises = selEntries
+      .filter(([ds]) => !activeDatasets.has(ds))
+      .map(([ds]) => { activeDatasets.add(ds); return loadDatasetStations(ds); });
+    if (loadPromises.length > 0) {
+      updateDatasetButtons();
+      await Promise.all(loadPromises);
+    }
+    selEntries.forEach(([ds, ids]) => ids.forEach(id => selectedIds.add(dsKey(ds, id))));
+    updateLeftMarkerStyles();
+  }
+
+  if (selectedIds.size > 0) fetchResults();
+}
+
+// ── Delta mode ──
+
+let deltaMode = false;
+let normalizePerHour = true;
+
+function hoursInRange(hs, he) {
+  if (hs === '' || he === '') return 24;
+  const s = parseInt(hs), e = parseInt(he);
+  return s <= e ? (e - s + 1) : (24 - s + e + 1);
+}
+
+function toggleNormalize() {
+  normalizePerHour = !normalizePerHour;
+  document.getElementById('btn-normalize').classList.toggle('active', normalizePerHour);
+  if (lastResultData && lastResultData._delta) {
+    renderDeltaResults(lastResultData.dataA, lastResultData.dataB);
+  }
+}
+
+function toggleDeltaMode() {
+  deltaMode = !deltaMode;
+  document.getElementById('btn-delta').classList.toggle('active', deltaMode);
+  const bar = document.getElementById('delta-bar');
+  bar.style.display = deltaMode ? 'flex' : 'none';
+  // Leaflet maps must recalculate their container bounds after layout shifts
+  setTimeout(() => { mapLeft.invalidateSize(); mapRight.invalidateSize(); }, 0);
+  if (selectedIds.size > 0) fetchResults();
+}
+
+function reRenderResults() {
+  excludedIds.clear();
+  if (lastResultData && lastResultData._delta) {
+    renderDeltaResults(lastResultData.dataA, lastResultData.dataB);
+  } else {
+    renderResults(lastResultData);
+  }
+}
+
+// Extract selected IDs grouped by dataset (reused by both fetch functions)
+function groupSelectedByDataset() {
+  const byDataset = {};
+  for (const key of selectedIds) {
+    const colonIdx = key.indexOf(':');
+    const ds = key.slice(0, colonIdx);
+    const id = key.slice(colonIdx + 1);
+    if (!byDataset[ds]) byDataset[ds] = [];
+    byDataset[ds].push(id);
+  }
+  return byDataset;
+}
+
+// Build URLSearchParams for one set of filter values
+function buildFilterParams(idParam, ids, month, day, hourStart, hourEnd, memberCasual) {
+  const params = new URLSearchParams();
+  params.set(idParam, ids.join(','));
+  if (month) params.set('month', month);
+  if (day) params.set('day_of_week', day);
+  if (hourStart !== '' && hourEnd !== '') {
+    params.set('hour_start', hourStart);
+    params.set('hour_end', hourEnd);
+  }
+  if (memberCasual) params.set('member_casual', memberCasual);
+  return params;
+}
+
+async function fetchDeltaResults() {
+  if (fetchController) fetchController.abort();
+  fetchController = new AbortController();
+
+  const byDataset = groupSelectedByDataset();
+  const direction = mode === 'dest' ? 'origins' : 'destinations';
+  const idParam = mode === 'dest' ? 'dest_ids' : 'origin_ids';
+
+  const monthA = document.getElementById('month').value;
+  const dayA = document.getElementById('day').value;
+  const hsA = document.getElementById('hour-start').value;
+  const heA = document.getElementById('hour-end').value;
+
+  const monthB = document.getElementById('month-b').value;
+  const dayB = document.getElementById('day-b').value;
+  const hsB = document.getElementById('hour-start-b').value;
+  const heB = document.getElementById('hour-end-b').value;
+
+  const mc = document.getElementById('member-casual').value;
+
+  const fetchSet = (month, day, hs, he) =>
+    Promise.all(Object.entries(byDataset).map(([ds, ids]) =>
+      fetch(`/api/${ds}/${direction}?${buildFilterParams(idParam, ids, month, day, hs, he, ds === 'citibike' ? mc : '')}`,
+        { signal: fetchController.signal })
+        .then(r => r.json())
+        .then(data => data.map(d => ({ ...d, _dataset: ds })))
+    )).then(r => r.flat());
+
+  try {
+    const [dataA, dataB] = await Promise.all([
+      fetchSet(monthA, dayA, hsA, heA),
+      fetchSet(monthB, dayB, hsB, heB),
+    ]);
+    renderDeltaResults(dataA, dataB);
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error(e);
+  }
+}
+
+function renderDeltaResults(dataA, dataB) {
+  resultMarkersRight.forEach(m => mapRight.removeLayer(m));
+  resultMarkersRight = [];
+  lastResultData = { _delta: true, dataA, dataB };
+
+  const mapA = new Map(dataA.map(d => [dsKey(d._dataset, d.station_id), d]));
+  const mapB = new Map(dataB.map(d => [dsKey(d._dataset, d.station_id), d]));
+  const allKeys = new Set([...mapA.keys(), ...mapB.keys()]);
+
+  const hoursA = normalizePerHour ? hoursInRange(
+    document.getElementById('hour-start').value,
+    document.getElementById('hour-end').value) : 1;
+  const hoursB = normalizePerHour ? hoursInRange(
+    document.getElementById('hour-start-b').value,
+    document.getElementById('hour-end-b').value) : 1;
+
+  const deltas = [];
+  for (const key of allKeys) {
+    const a = mapA.get(key), b = mapB.get(key);
+    const ref = a || b;
+    const rA = a ? a.total_ridership / hoursA : 0;
+    const rB = b ? b.total_ridership / hoursB : 0;
+    deltas.push({
+      _dataset: ref._dataset, station_id: ref.station_id,
+      station_name: ref.station_name, lat: ref.lat, lng: ref.lng,
+      rA, rB,
+      delta: rA - rB,
+    });
+  }
+
+  if (deltas.length === 0) { clearResults(); return; }
+
+  const maxAbs = Math.max(...deltas.map(d => Math.abs(d.delta)), 1);
+
+  deltas.forEach(d => {
+    const ratio = d.delta / maxAbs; // -1 to +1
+    const absRatio = Math.abs(ratio);
+    const sign = d.delta >= 0 ? '+' : '';
+    const perHrLabel = normalizePerHour ? '/hr' : '';
+    const tip = `<b>${d.station_name}</b><br>A: ${Math.round(d.rA).toLocaleString()}${perHrLabel} &nbsp; B: ${Math.round(d.rB).toLocaleString()}${perHrLabel}<br>Δ: ${sign}${Math.round(d.delta).toLocaleString()}${perHrLabel}`;
+
+    let marker;
+    if (d._dataset === 'taxi' && taxiGeoJson) {
+      const feat = taxiGeoJson.features.find(f => f.properties.LocationID === d.station_id);
+      if (!feat) return;
+      marker = L.geoJSON(feat, {
+        style: {
+          fillColor: interpolateDeltaColor(ratio),
+          fillOpacity: 0.15 + absRatio * 0.65,
+          color: interpolateDeltaColor(ratio),
+          weight: 1 + absRatio,
+        }
+      });
+      marker.bindTooltip(tip, { sticky: true });
+    } else {
+      const radius = 3 + absRatio * 12;
+      marker = L.circleMarker([d.lat, d.lng], {
+        radius,
+        fillColor: interpolateDeltaColor(ratio),
+        fillOpacity: 0.25 + absRatio * 0.55,
+        color: interpolateDeltaColor(ratio),
+        weight: 1,
+      });
+      marker.bindTooltip(tip, { direction: 'top', offset: [0, -radius] });
+    }
+    marker.addTo(mapRight);
+    resultMarkersRight.push(marker);
+  });
+
+  const label = mode === 'dest' ? 'Origins Δ' : 'Destinations Δ';
+  document.getElementById('right-label').textContent = `${label}: ${deltas.length}`;
+  document.getElementById('status-right').textContent = `A vs B — cyan = more A, orange = more B`;
+}
+
+function interpolateDeltaColor(ratio) {
+  // ratio: -1 (more in B, orange) → 0 (gray) → +1 (more in A, cyan)
+  if (ratio >= 0) {
+    const t = ratio;
+    return `rgb(${Math.round(160*(1-t))},${Math.round(160+t*50)},${Math.round(192+t*63)})`;
+  } else {
+    const t = -ratio;
+    return `rgb(${Math.round(160+t*95)},${Math.round(160-t*110)},${Math.round(192-t*150)})`;
+  }
+}
+
+// Re-query on filter change (A filters + B filters in delta mode)
+['month', 'day', 'hour-start', 'hour-end', 'member-casual',
+ 'month-b', 'day-b', 'hour-start-b', 'hour-end-b'].forEach(id => {
   document.getElementById(id).addEventListener('change', () => {
     if (selectedIds.size > 0) fetchResults();
   });
 });
 
 // Init
-loadStations();
+loadDatasetStations('subway');
 </script>
 </body>
 </html>

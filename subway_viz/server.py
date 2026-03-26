@@ -1,13 +1,19 @@
+import json
+from functools import lru_cache
+
 import duckdb
 from fastapi import FastAPI, Query
 from fastapi.responses import HTMLResponse
 from pathlib import Path
+from shapely.geometry import shape
 from typing import Optional
 
 app = FastAPI()
 
 SUBWAY_DB = Path(__file__).parent.parent / "subway_2025"
 CITIBIKE_DB = Path(__file__).parent.parent / "citibike_data.duckdb"
+TAXI_PARQUET_GLOB = str(Path(__file__).parent.parent / "data/yellow_taxi_records/yellow_taxi_*.parquet")
+TAXI_ZONES_FILE = Path(__file__).parent.parent / "taxi_viz/zones_cache.geojson"
 
 
 def get_con(dataset: str):
@@ -41,7 +47,11 @@ def _subway_where(direction, ids, month, day_of_week, hour_start, hour_end):
     clauses = [f'"{id_col}" IN ({placeholders})']
     if month is not None:
         clauses.append(f"Month = {month}")
-    if day_of_week is not None:
+    if day_of_week == 'Weekday':
+        clauses.append("\"Day of Week\" IN ('Monday','Tuesday','Wednesday','Thursday','Friday')")
+    elif day_of_week == 'Weekend':
+        clauses.append("\"Day of Week\" IN ('Saturday','Sunday')")
+    elif day_of_week is not None:
         clauses.append(f"\"Day of Week\" = '{day_of_week}'")
     if hour_start is not None and hour_end is not None:
         if hour_start <= hour_end:
@@ -137,7 +147,11 @@ def _citibike_where(direction, ids, month, day_of_week, hour_start, hour_end, me
     clauses = [f"{id_col} IN ({quoted})"]
     if month is not None:
         clauses.append(f"MONTH(started_at) = {month}")
-    if day_of_week is not None:
+    if day_of_week == 'Weekday':
+        clauses.append("DAYNAME(started_at) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')")
+    elif day_of_week == 'Weekend':
+        clauses.append("DAYNAME(started_at) IN ('Saturday','Sunday')")
+    elif day_of_week is not None:
         clauses.append(f"DAYNAME(started_at) = '{day_of_week}'")
     if hour_start is not None and hour_end is not None:
         if hour_start <= hour_end:
@@ -211,6 +225,122 @@ def citibike_destinations(
     """).fetchdf()
     con.close()
     return df.to_dict(orient="records")
+
+
+# ── Taxi endpoints ──
+
+
+@lru_cache(maxsize=1)
+def _taxi_zone_list():
+    with open(TAXI_ZONES_FILE) as f:
+        gj = json.load(f)
+    result = []
+    for feat in gj['features']:
+        props = feat['properties']
+        centroid = shape(feat['geometry']).centroid
+        result.append({
+            'station_id': props['LocationID'],
+            'station_name': f"{props['zone']} ({props['borough']})",
+            'lat': centroid.y,
+            'lng': centroid.x,
+        })
+    return result
+
+
+@lru_cache(maxsize=1)
+def _taxi_zone_lookup():
+    return {z['station_id']: z for z in _taxi_zone_list()}
+
+
+@app.get("/api/taxi/stations")
+def taxi_stations():
+    return _taxi_zone_list()
+
+
+@app.get("/api/taxi/zones")
+def taxi_zones():
+    with open(TAXI_ZONES_FILE) as f:
+        return json.load(f)
+
+
+def _taxi_filter_clauses(month, day_of_week, hour_start, hour_end):
+    clauses = ['trip_distance > 0', 'fare_amount > 0']
+    if month is not None:
+        clauses.append(f"MONTH(tpep_pickup_datetime) = {month}")
+    if day_of_week == 'Weekday':
+        clauses.append("DAYNAME(tpep_pickup_datetime) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')")
+    elif day_of_week == 'Weekend':
+        clauses.append("DAYNAME(tpep_pickup_datetime) IN ('Saturday','Sunday')")
+    elif day_of_week is not None:
+        clauses.append(f"DAYNAME(tpep_pickup_datetime) = '{day_of_week}'")
+    if hour_start is not None and hour_end is not None:
+        if hour_start <= hour_end:
+            clauses.append(f"HOUR(tpep_pickup_datetime) >= {hour_start} AND HOUR(tpep_pickup_datetime) <= {hour_end}")
+        else:
+            clauses.append(f"(HOUR(tpep_pickup_datetime) >= {hour_start} OR HOUR(tpep_pickup_datetime) <= {hour_end})")
+    return clauses
+
+
+@app.get("/api/taxi/origins")
+def taxi_origins(
+    dest_ids: str = Query(...),
+    month: Optional[int] = None,
+    day_of_week: Optional[str] = None,
+    hour_start: Optional[int] = None,
+    hour_end: Optional[int] = None,
+):
+    zone_ids = [int(x) for x in dest_ids.split(",") if x.strip()]
+    if not zone_ids:
+        return []
+    placeholders = ",".join(str(i) for i in zone_ids)
+    clauses = [f"DOLocationID IN ({placeholders})"] + _taxi_filter_clauses(month, day_of_week, hour_start, hour_end)
+    where = " AND ".join(clauses)
+    con = duckdb.connect()
+    df = con.execute(f"""
+        SELECT PULocationID AS station_id, COUNT(*) AS total_ridership
+        FROM read_parquet('{TAXI_PARQUET_GLOB}')
+        WHERE {where}
+        GROUP BY 1
+        ORDER BY total_ridership DESC
+    """).fetchdf()
+    con.close()
+    lookup = _taxi_zone_lookup()
+    return [
+        {**lookup[int(row.station_id)], 'total_ridership': int(row.total_ridership)}
+        for _, row in df.iterrows()
+        if int(row.station_id) in lookup
+    ]
+
+
+@app.get("/api/taxi/destinations")
+def taxi_destinations(
+    origin_ids: str = Query(...),
+    month: Optional[int] = None,
+    day_of_week: Optional[str] = None,
+    hour_start: Optional[int] = None,
+    hour_end: Optional[int] = None,
+):
+    zone_ids = [int(x) for x in origin_ids.split(",") if x.strip()]
+    if not zone_ids:
+        return []
+    placeholders = ",".join(str(i) for i in zone_ids)
+    clauses = [f"PULocationID IN ({placeholders})"] + _taxi_filter_clauses(month, day_of_week, hour_start, hour_end)
+    where = " AND ".join(clauses)
+    con = duckdb.connect()
+    df = con.execute(f"""
+        SELECT DOLocationID AS station_id, COUNT(*) AS total_ridership
+        FROM read_parquet('{TAXI_PARQUET_GLOB}')
+        WHERE {where}
+        GROUP BY 1
+        ORDER BY total_ridership DESC
+    """).fetchdf()
+    con.close()
+    lookup = _taxi_zone_lookup()
+    return [
+        {**lookup[int(row.station_id)], 'total_ridership': int(row.total_ridership)}
+        for _, row in df.iterrows()
+        if int(row.station_id) in lookup
+    ]
 
 
 @app.get("/", response_class=HTMLResponse)

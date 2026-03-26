@@ -5,3 +5,5 @@ __pycache__/
 *.zip
 .claude
 .vite
+*.duckdb
+subway_2025

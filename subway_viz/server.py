@@ -343,6 +343,117 @@ def taxi_destinations(
     ]
 
 
+@app.get("/api/subway/hourly")
+def subway_hourly(
+    origin_ids: Optional[str] = Query(None),
+    dest_ids: Optional[str] = Query(None),
+    month: Optional[int] = None,
+    day_of_week: Optional[str] = None,
+):
+    ids_str = origin_ids or dest_ids
+    if not ids_str:
+        return []
+    ids = [int(x) for x in ids_str.split(",") if x.strip()]
+    if not ids:
+        return []
+    id_col = '"Origin Station Complex ID"' if origin_ids else '"Destination Station Complex ID"'
+    placeholders = ",".join(str(i) for i in ids)
+    clauses = [f"{id_col} IN ({placeholders})"]
+    if month is not None:
+        clauses.append(f"Month = {month}")
+    if day_of_week == 'Weekday':
+        clauses.append("\"Day of Week\" IN ('Monday','Tuesday','Wednesday','Thursday','Friday')")
+    elif day_of_week == 'Weekend':
+        clauses.append("\"Day of Week\" IN ('Saturday','Sunday')")
+    elif day_of_week is not None:
+        clauses.append(f"\"Day of Week\" = '{day_of_week}'")
+    where = " AND ".join(clauses)
+    con = get_con("subway")
+    df = con.execute(f"""
+        SELECT "Hour of Day" AS hour, SUM("Estimated Average Ridership") AS total
+        FROM subway_data
+        WHERE {where}
+        GROUP BY 1 ORDER BY 1
+    """).fetchdf()
+    con.close()
+    return df.to_dict(orient="records")
+
+
+@app.get("/api/citibike/hourly")
+def citibike_hourly(
+    origin_ids: Optional[str] = Query(None),
+    dest_ids: Optional[str] = Query(None),
+    month: Optional[int] = None,
+    day_of_week: Optional[str] = None,
+    member_casual: Optional[str] = None,
+):
+    ids_str = origin_ids or dest_ids
+    if not ids_str:
+        return []
+    ids = [x.strip() for x in ids_str.split(",") if x.strip()]
+    if not ids:
+        return []
+    id_col = "start_station_id" if origin_ids else "end_station_id"
+    quoted = ",".join(f"'{i}'" for i in ids)
+    clauses = [f"{id_col} IN ({quoted})"]
+    if month is not None:
+        clauses.append(f"MONTH(started_at) = {month}")
+    if day_of_week == 'Weekday':
+        clauses.append("DAYNAME(started_at) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')")
+    elif day_of_week == 'Weekend':
+        clauses.append("DAYNAME(started_at) IN ('Saturday','Sunday')")
+    elif day_of_week is not None:
+        clauses.append(f"DAYNAME(started_at) = '{day_of_week}'")
+    if member_casual:
+        clauses.append(f"member_casual = '{member_casual}'")
+    where = " AND ".join(clauses)
+    con = get_con("citibike")
+    df = con.execute(f"""
+        SELECT HOUR(started_at) AS hour, COUNT(*) AS total
+        FROM rides
+        WHERE {where}
+        GROUP BY 1 ORDER BY 1
+    """).fetchdf()
+    con.close()
+    return df.to_dict(orient="records")
+
+
+@app.get("/api/taxi/hourly")
+def taxi_hourly(
+    origin_ids: Optional[str] = Query(None),
+    dest_ids: Optional[str] = Query(None),
+    month: Optional[int] = None,
+    day_of_week: Optional[str] = None,
+):
+    ids_str = origin_ids or dest_ids
+    if not ids_str:
+        return []
+    zone_ids = [int(x) for x in ids_str.split(",") if x.strip()]
+    if not zone_ids:
+        return []
+    id_col = "PULocationID" if origin_ids else "DOLocationID"
+    placeholders = ",".join(str(i) for i in zone_ids)
+    clauses = [f"{id_col} IN ({placeholders})", 'trip_distance > 0', 'fare_amount > 0']
+    if month is not None:
+        clauses.append(f"MONTH(tpep_pickup_datetime) = {month}")
+    if day_of_week == 'Weekday':
+        clauses.append("DAYNAME(tpep_pickup_datetime) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')")
+    elif day_of_week == 'Weekend':
+        clauses.append("DAYNAME(tpep_pickup_datetime) IN ('Saturday','Sunday')")
+    elif day_of_week is not None:
+        clauses.append(f"DAYNAME(tpep_pickup_datetime) = '{day_of_week}'")
+    where = " AND ".join(clauses)
+    con = duckdb.connect()
+    df = con.execute(f"""
+        SELECT HOUR(tpep_pickup_datetime) AS hour, COUNT(*) AS total
+        FROM read_parquet('{TAXI_PARQUET_GLOB}')
+        WHERE {where}
+        GROUP BY 1 ORDER BY 1
+    """).fetchdf()
+    con.close()
+    return df.to_dict(orient="records")
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     return (Path(__file__).parent / "index.html").read_text()

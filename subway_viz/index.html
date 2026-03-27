@@ -6,35 +6,122 @@
 <title>NYC Subway O-D Explorer</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #e0e0e0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #1a1a2e; color: #e0e0e0;
+    display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+  }
 
+  /* ── Controls shell ── */
   #controls {
-    display: flex; align-items: center; gap: 16px;
-    padding: 10px 20px; background: #16213e; border-bottom: 1px solid #0f3460;
-    flex-wrap: wrap;
+    flex-shrink: 0;
+    display: flex; flex-direction: column;
+    background: #16213e; border-bottom: 1px solid #0f3460;
   }
-  #controls label { font-size: 13px; color: #a0a0c0; }
-  #controls select, #controls input {
+
+  /* Row 1 — always-visible strip */
+  #ctrl-top {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 16px; flex-wrap: wrap;
+  }
+  #ctrl-top label { font-size: 12px; color: #a0a0c0; }
+  #ctrl-top .group { display: flex; align-items: center; gap: 6px; }
+  #ctrl-actions { margin-left: auto; display: flex; gap: 6px; }
+
+  /* Row 2 — tab bar */
+  #ctrl-tab-bar {
+    display: flex; align-items: stretch;
+    border-top: 1px solid #0f3460;
+    background: #111928;
+  }
+  .tab-btn {
+    padding: 5px 18px; font-size: 12px; font-weight: 500;
+    background: transparent; color: #a0a0c0;
+    border: none; border-right: 1px solid #0f3460;
+    cursor: pointer; letter-spacing: 0.3px;
+  }
+  .tab-btn:hover { background: #1a2744; color: #e0e0e0; }
+  .tab-btn.active {
+    background: #16213e; color: #e0e0e0;
+    border-bottom: 2px solid #e94560;
+  }
+
+  /* Row 3 — tab panel */
+  .ctrl-panel {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 6px 16px; min-height: 40px;
+    border-top: 1px solid #0f3460;
+  }
+  .ctrl-panel label { font-size: 12px; color: #a0a0c0; }
+  .ctrl-panel .group { display: flex; align-items: center; gap: 6px; }
+  .ctrl-panel select, .ctrl-panel input[type=text] {
     background: #1a1a2e; color: #e0e0e0; border: 1px solid #0f3460;
-    padding: 4px 8px; border-radius: 4px; font-size: 13px;
+    padding: 3px 8px; border-radius: 4px; font-size: 12px;
   }
-  #controls .group { display: flex; align-items: center; gap: 6px; }
-  /* Base: all buttons gray (inactive toggle state) */
-  #controls button, #delta-bar button {
-    background: #4a5568; color: #e0e0e0; border: none; padding: 6px 14px;
-    border-radius: 4px; cursor: pointer; font-size: 13px;
-  }
-  #controls button:hover, #delta-bar button:hover { background: #5a6578; }
+  #tab-presets.ctrl-panel { padding: 7px 16px; }
+  #preset-group { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
 
-  /* Active state: red */
-  #controls button.active, #delta-bar button.active {
-    background: #e94560; color: white;
+  /* Ask AI panel */
+  .ask-row {
+    display: flex; align-items: center; gap: 8px;
+    flex: 1; min-width: 280px;
   }
-  #controls button.active:hover, #delta-bar button.active:hover { background: #c73e54; }
+  .ask-row input {
+    flex: 1; background: #1a1a2e; color: #e0e0e0;
+    border: 1px solid #0f3460; padding: 5px 10px;
+    border-radius: 4px; font-size: 13px;
+  }
+  .ask-row input:focus { outline: none; border-color: #e94560; }
+  .ask-row input::placeholder { color: #4a5568; }
+  .ai-response { font-size: 12px; }
+  .ai-thinking { color: #a0a0c0; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .ai-thinking { animation: pulse 1.2s infinite; }
+  .ai-chip {
+    display: inline-block; background: #0f3460; color: #00d2ff;
+    padding: 2px 8px; border-radius: 10px; font-size: 11px; margin: 0 2px;
+  }
+  .ai-note { color: #a0a0c0; font-style: italic; }
 
-  #maps-container { display: flex; height: calc(100vh - 90px); }
+  /* Rain slider */
+  input[type=range] {
+    -webkit-appearance: none; width: 80px; height: 4px;
+    background: #0f3460; border-radius: 2px; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 13px; height: 13px;
+    background: #e94560; border-radius: 50%; cursor: pointer;
+  }
+  #rain-label { font-size: 11px; color: #a0a0c0; min-width: 32px; }
+
+  /* Shared button styles */
+  button, #delta-bar button {
+    background: #4a5568; color: #e0e0e0; border: none;
+    padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;
+  }
+  button:hover { background: #5a6578; }
+  button.active { background: #e94560; color: white; }
+  button.active:hover { background: #c73e54; }
+  .mode-toggle { display: flex; border-radius: 4px; overflow: hidden; border: 1px solid #0f3460; }
+  .mode-toggle button { padding: 4px 11px; font-size: 12px; border-radius: 0; }
+
+  /* ── Layout ── */
+  #delta-bar { flex-shrink: 0; }
+  #maps-container { flex: 1; min-height: 0; display: flex; }
+  #chart-container {
+    flex-shrink: 0; height: 185px; background: #16213e;
+    border-top: 1px solid #0f3460; padding: 6px 16px 4px;
+  }
+  #hourly-svg { display: block; width: 100%; }
+  #status {
+    flex-shrink: 0; padding: 5px 20px; background: #16213e;
+    border-top: 1px solid #0f3460; font-size: 12px; color: #a0a0c0;
+    display: flex; justify-content: space-between;
+  }
+
   .map-panel { flex: 1; position: relative; }
   .map-panel .map { width: 100%; height: 100%; }
   .map-label {
@@ -46,99 +133,114 @@
   .map-label.select { color: #e94560; }
   .map-label.result { color: #00d2ff; }
   .divider { width: 3px; background: #0f3460; cursor: col-resize; }
-
-  #status {
-    padding: 6px 20px; background: #16213e; border-top: 1px solid #0f3460;
-    font-size: 12px; color: #a0a0c0; display: flex; justify-content: space-between;
-  }
-
-  .mode-toggle {
-    display: flex; border-radius: 4px; overflow: hidden; border: 1px solid #0f3460;
-  }
-  .mode-toggle button { padding: 4px 12px; font-size: 12px; }
 </style>
 </head>
 <body>
 
 <div id="controls">
-  <div class="group">
-    <label>Dataset:</label>
-    <div class="mode-toggle">
-      <button id="ds-subway" class="active" onclick="toggleDataset('subway')">Subway</button>
-      <button id="ds-citibike" onclick="toggleDataset('citibike')">Citibike</button>
-      <button id="ds-taxi" onclick="toggleDataset('taxi')">Taxi Zones</button>
+
+  <!-- Row 1: always-visible — dataset, mode, map, actions -->
+  <div id="ctrl-top">
+    <div class="group">
+      <label>Dataset:</label>
+      <div class="mode-toggle">
+        <button id="ds-subway" class="active" onclick="toggleDataset('subway')">Subway</button>
+        <button id="ds-citibike" onclick="toggleDataset('citibike')">Citibike</button>
+        <button id="ds-taxi" onclick="toggleDataset('taxi')">Taxi</button>
+      </div>
+    </div>
+    <div class="group">
+      <label>Mode:</label>
+      <div class="mode-toggle">
+        <button id="mode-dest" class="active" onclick="setMode('dest')">Destinations</button>
+        <button id="mode-origin" onclick="setMode('origin')">Origins</button>
+      </div>
+    </div>
+    <div class="group">
+      <div class="mode-toggle">
+        <button id="btn-select" class="active" onclick="selectMode=true;updateSelectModeUI()">Select</button>
+        <button id="btn-pan" onclick="selectMode=false;updateSelectModeUI()">Pan</button>
+      </div>
+    </div>
+    <div id="ctrl-actions">
+      <button id="btn-delta" onclick="toggleDeltaMode()">Δ Compare</button>
+      <button onclick="clearSelection()">Clear</button>
+      <button onclick="excludedIds.clear();reRenderResults()">Clear Excl.</button>
     </div>
   </div>
-  <div class="group">
-    <label>Mode:</label>
-    <div class="mode-toggle">
-      <button id="mode-dest" class="active" onclick="setMode('dest')">Select Destinations</button>
-      <button id="mode-origin" onclick="setMode('origin')">Select Origins</button>
+
+  <!-- Row 2: tab bar -->
+  <div id="ctrl-tab-bar">
+    <button class="tab-btn active" onclick="switchTab('conditions')">⚙ Set Conditions</button>
+    <button class="tab-btn" onclick="switchTab('presets')">★ Presets</button>
+    <button class="tab-btn" onclick="switchTab('ask')">✦ Ask AI</button>
+  </div>
+
+  <!-- Panel: Set Conditions -->
+  <div id="tab-conditions" class="ctrl-panel">
+    <div class="group" id="member-filter" style="display:none">
+      <label>Rider:</label>
+      <select id="member-casual">
+        <option value="">All</option>
+        <option value="member">Member</option>
+        <option value="casual">Casual</option>
+      </select>
+    </div>
+    <div class="group">
+      <label>Month:</label>
+      <select id="month">
+        <option value="">All</option>
+        <option value="1">Jan</option><option value="2">Feb</option>
+        <option value="3">Mar</option><option value="4">Apr</option>
+        <option value="5">May</option><option value="6">Jun</option>
+        <option value="7">Jul</option><option value="8">Aug</option>
+        <option value="9">Sep</option><option value="10">Oct</option>
+        <option value="11">Nov</option><option value="12">Dec</option>
+      </select>
+    </div>
+    <div class="group">
+      <label>Day:</label>
+      <select id="day">
+        <option value="">All</option>
+        <option value="Weekday">Weekday (M–F)</option>
+        <option value="Weekend">Weekend</option>
+        <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+        <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+      </select>
+    </div>
+    <div class="group">
+      <label>Hours:</label>
+      <select id="hour-start"><option value="">All</option></select>
+      <span style="color:#718096">–</span>
+      <select id="hour-end"><option value="">All</option></select>
+    </div>
+    <div class="group">
+      <label>Rain ≥</label>
+      <input type="range" id="rain-threshold" min="0" max="25" value="0" step="1"
+             oninput="document.getElementById('rain-label').textContent=this.value+' mm'">
+      <span id="rain-label">0 mm</span>
     </div>
   </div>
-  <div class="group" id="member-filter" style="display:none">
-    <label>Rider:</label>
-    <select id="member-casual">
-      <option value="">All</option>
-      <option value="member">Member</option>
-      <option value="casual">Casual</option>
-    </select>
+
+  <!-- Panel: Presets -->
+  <div id="tab-presets" class="ctrl-panel" style="display:none">
+    <div id="preset-group"></div>
   </div>
-  <div class="group">
-    <label>Month:</label>
-    <select id="month">
-      <option value="">All</option>
-      <option value="1">Jan</option><option value="2">Feb</option>
-      <option value="3">Mar</option><option value="4">Apr</option>
-      <option value="5">May</option><option value="6">Jun</option>
-      <option value="7">Jul</option><option value="8">Aug</option>
-      <option value="9">Sep</option><option value="10">Oct</option>
-      <option value="11">Nov</option><option value="12">Dec</option>
-    </select>
-  </div>
-  <div class="group">
-    <label>Day:</label>
-    <select id="day">
-      <option value="">All</option>
-      <option value="Weekday">Weekday (M–F)</option>
-      <option value="Weekend">Weekend</option>
-      <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
-      <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
-    </select>
-  </div>
-  <div class="group">
-    <label>Hours:</label>
-    <select id="hour-start">
-      <option value="">All</option>
-    </select>
-    <span>–</span>
-    <select id="hour-end">
-      <option value="">All</option>
-    </select>
-  </div>
-  <div class="group">
-    <label>Map:</label>
-    <div class="mode-toggle">
-      <button id="btn-select" class="active" onclick="selectMode=true;updateSelectModeUI()">Select</button>
-      <button id="btn-pan" onclick="selectMode=false;updateSelectModeUI()">Pan</button>
+
+  <!-- Panel: Ask AI -->
+  <div id="tab-ask" class="ctrl-panel" style="display:none">
+    <div class="ask-row">
+      <input type="text" id="ai-query"
+             placeholder="e.g. Where do people go after a Knicks game at MSG?"
+             onkeydown="if(event.key==='Enter')handleAIQuery()">
+      <button onclick="handleAIQuery()">Ask →</button>
     </div>
+    <div id="ai-response" class="ai-response"></div>
   </div>
-  <div class="group">
-    <label>Preset:</label>
-    <button onclick="applyPreset('weekday-morning-commute')">Weekday Morning</button>
-    <button onclick="applyPreset('weekday-evening-dispersal')">Evening Dispersal</button>
-    <button onclick="applyPreset('friday-night-out')">Friday Night Out</button>
-    <button onclick="applyPreset('weekend-daytime')">Weekend Daytime</button>
-    <button onclick="applyPreset('post-game-dispersal')">Post-Game</button>
-  </div>
-  <div class="group">
-    <button id="btn-delta" onclick="toggleDeltaMode()">Δ Compare</button>
-  </div>
-  <button onclick="clearSelection()">Clear Selection</button>
-  <button onclick="excludedIds.clear();reRenderResults()">Clear Exclusions</button>
+
 </div>
 
-<div id="delta-bar" style="display:none; padding:6px 20px; background:#16213e; border-bottom:1px solid #0f3460; display:none; align-items:center; gap:16px; flex-wrap:wrap;">
+<div id="delta-bar" style="display:none; padding:6px 20px; background:#16213e; border-bottom:1px solid #0f3460; align-items:center; gap:16px; flex-wrap:wrap;">
   <span style="font-size:12px; color:#e94560; font-weight:600;">vs (B)</span>
   <div class="group">
     <label>Month:</label>
@@ -168,7 +270,7 @@
     <span>–</span>
     <select id="hour-end-b"><option value="">All</option></select>
   </div>
-  <button id="btn-normalize" onclick="toggleNormalize()" style="font-size:12px; padding:4px 10px;">÷ per hour</button>
+  <button id="btn-normalize" class="active" onclick="toggleNormalize()" style="font-size:12px; padding:4px 10px;">÷ per hour</button>
   <span style="font-size:11px; color:#a0a0c0">■ cyan = more in A &nbsp; ■ <span style="color:#ff6b35">orange</span> = more in B</span>
 </div>
 
@@ -182,6 +284,10 @@
     <div class="map-label result" id="right-label">Origins will appear here</div>
     <div id="map-right" class="map"></div>
   </div>
+</div>
+
+<div id="chart-container">
+  <svg id="hourly-svg"></svg>
 </div>
 
 <div id="status">
@@ -207,6 +313,13 @@ for (let h = 0; h < 24; h++) {
 const mapLeft = L.map('map-left', { zoomControl: false, boxZoom: false }).setView(NYC_CENTER, ZOOM);
 const mapRight = L.map('map-right', { zoomControl: false }).setView(NYC_CENTER, ZOOM);
 
+// Taxi polygons go into a pane below the default overlayPane (z=400) so
+// subway/citibike circle markers always stay on top and remain hoverable.
+mapLeft.createPane('taxiPane');
+mapLeft.getPane('taxiPane').style.zIndex = 350;
+mapRight.createPane('taxiPane');
+mapRight.getPane('taxiPane').style.zIndex = 350;
+
 // Selection mode: when enabled, drag draws a selection rectangle instead of panning
 let selectMode = true;
 mapLeft.dragging.disable();
@@ -224,6 +337,7 @@ function updateSelectModeUI() {
 
 L.control.zoom({ position: 'bottomright' }).addTo(mapLeft);
 L.control.zoom({ position: 'bottomright' }).addTo(mapRight);
+
 
 const tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 const tileAttr = '&copy; OpenStreetMap &copy; CARTO';
@@ -291,6 +405,8 @@ async function toggleDataset(ds) {
 async function loadDatasetStations(ds) {
   const resp = await fetch(`/api/${ds}/stations`);
   const stations = await resp.json();
+  console.debug(`[${ds}] stations loaded: ${stations.length}`);
+  if (stations.length > 0) console.debug(`[${ds}] sample station:`, stations[0]);
   allStationsPerDataset[ds] = stations;
   if (ds === 'taxi') {
     if (!taxiGeoJson) {
@@ -301,10 +417,14 @@ async function loadDatasetStations(ds) {
   } else {
     renderDatasetStationMarkers(ds, stations);
   }
+  console.debug(`[${ds}] markers in stationMarkersLeft after render:`,
+    Object.keys(stationMarkersLeft).filter(k => k.startsWith(ds + ':')).length);
 }
 
 function renderDatasetStationMarkers(ds, stations) {
+  let nullLatLng = 0;
   stations.forEach(s => {
+    if (s.lat == null || s.lng == null) { nullLatLng++; return; }
     const key = dsKey(ds, s.station_id);
     const selected = selectedIds.has(key);
     const marker = L.circleMarker([s.lat, s.lng], {
@@ -319,6 +439,7 @@ function renderDatasetStationMarkers(ds, stations) {
     marker.addTo(mapLeft);
     stationMarkersLeft[key] = marker;
   });
+  if (nullLatLng) console.warn(`[${ds}] ${nullLatLng} stations skipped — null lat/lng`);
 }
 
 function renderDatasetTaxiZones(stations) {
@@ -327,6 +448,7 @@ function renderDatasetTaxiZones(stations) {
     const key = dsKey('taxi', zoneId);
     const selected = selectedIds.has(key);
     const layer = L.geoJSON(feat, {
+      pane: 'taxiPane',
       style: {
         fillColor: selected ? SELECTED_COLOR : DEFAULT_COLOR,
         fillOpacity: selected ? 0.6 : 0.3,
@@ -350,6 +472,7 @@ function toggleStation(key) {
   } else {
     selectedIds.add(key);
   }
+  console.debug(`[toggleStation] key=${key} selectedIds.size=${selectedIds.size}`);
   updateLeftMarkerStyles();
   fetchResults();
 }
@@ -357,19 +480,23 @@ function toggleStation(key) {
 function updateLeftMarkerStyles() {
   for (const [ds, stations] of Object.entries(allStationsPerDataset)) {
     const isTaxi = ds === 'taxi';
+    let missing = 0, updated = 0;
     stations.forEach(s => {
       const key = dsKey(ds, s.station_id);
       const marker = stationMarkersLeft[key];
-      if (!marker) return;
+      if (!marker) { missing++; return; }
       const selected = selectedIds.has(key);
+
       marker.setStyle({
-        fillColor: selected ? SELECTED_COLOR : DEFAULT_COLOR,
+        fillColor:   selected ? SELECTED_COLOR : DEFAULT_COLOR,
         fillOpacity: selected ? (isTaxi ? 0.6 : 0.9) : (isTaxi ? 0.3 : 0.5),
-        color: selected ? '#ff6b81' : '#718096',
+        color:  selected ? '#ff6b81' : '#718096',
         weight: selected ? 2 : 1,
       });
       if (marker.setRadius) marker.setRadius(selected ? 6 : 4);
+      updated++;
     });
+    console.debug(`[updateLeftMarkerStyles][${ds}] updated=${updated} missing=${missing}`);
   }
   document.getElementById('status-left').textContent = `${selectedIds.size} selected`;
 }
@@ -417,7 +544,8 @@ mapLeft.on('mouseup', (e) => {
 // Fetch results from all active datasets in parallel
 let fetchController = null;
 async function fetchResults() {
-  if (selectedIds.size === 0) { clearResults(); return; }
+  if (selectedIds.size === 0) { clearResults(); renderHourlyChart(null); return; }
+  fetchHourlyData();
   if (deltaMode) { fetchDeltaResults(); return; }
 
   if (fetchController) fetchController.abort();
@@ -444,6 +572,7 @@ async function fetchResults() {
     if (e.name !== 'AbortError') console.error(e);
   }
 }
+
 
 function clearResults() {
   resultMarkersRight.forEach(m => mapRight.removeLayer(m));
@@ -481,6 +610,7 @@ function renderResults(data) {
       const feat = taxiGeoJson.features.find(f => f.properties.LocationID === d.station_id);
       if (!feat) return;
       marker = L.geoJSON(feat, {
+        pane: 'taxiPane',
         style: {
           fillColor: excluded ? '#555' : interpolateColor(ratio),
           fillOpacity: excluded ? 0.2 : 0.3 + ratio * 0.5,
@@ -515,6 +645,7 @@ function renderResults(data) {
   document.getElementById('right-label').textContent = `${label}: ${visible.length}${exLabel}`;
   document.getElementById('status-right').textContent =
     `Total: ${Math.round(totalRidership).toLocaleString()}`;
+
 }
 
 function interpolateColor(ratio) {
@@ -539,6 +670,7 @@ function clearSelection() {
   if (selectionRect) { mapLeft.removeLayer(selectionRect); selectionRect = null; }
   updateLeftMarkerStyles();
   clearResults();
+  renderHourlyChart(null);
 }
 const PRESETS = {
 
@@ -548,6 +680,7 @@ const PRESETS = {
   // delta removes weekend morning baseline to isolate pure commuter signal
   // ─────────────────────────────────────────────────────────────────────────
   'weekday-morning-commute': {
+    label: 'Weekday Morning',
     mode: 'dest',
     month: '', day: 'Weekday', hourStart: 7, hourEnd: 9,
     delta: true, normalizePerHour: true,
@@ -592,6 +725,7 @@ const PRESETS = {
   // delta removes weekend evening baseline to isolate commute-home signal
   // ─────────────────────────────────────────────────────────────────────────
   'weekday-evening-dispersal': {
+    label: 'Evening Dispersal',
     mode: 'origin',
     month: '', day: 'Weekday', hourStart: 17, hourEnd: 20,
     delta: true, normalizePerHour: true,
@@ -630,6 +764,7 @@ const PRESETS = {
   // delta against Monday night removes residential background noise
   // ─────────────────────────────────────────────────────────────────────────
   'friday-night-out': {
+    label: 'Friday Night Out',
     mode: 'origin',
     month: '', day: 'Friday', hourStart: 18, hourEnd: 23,
     delta: true, normalizePerHour: true,
@@ -658,50 +793,178 @@ const PRESETS = {
       ],
     },
   },
-
+// ─────────────────────────────────────────────────────────────────────────
+  // "Where do upper Manhattan residents go on weekends?"
+  // Origins: deep residential — Washington Heights, Inwood, Hamilton Heights,
+  //          East Harlem north of 100th St
+  // Leisure destinations emerge: which downtown/midtown spots pull them south?
   // ─────────────────────────────────────────────────────────────────────────
-  // "Which neighborhoods are alive when people have a free choice?"
-  // mode: origin  →  pre-select residential origins across all boroughs
-  //                  leisure destinations EMERGE — parks, markets, brunch corridors
-  // delta subtracts weekday lunch traffic to isolate leisure signal
-  // ─────────────────────────────────────────────────────────────────────────
-  'weekend-daytime': {
+  'weekend-daytime-manhattan': {
+    label: 'Weekend — Manhattan',
     mode: 'origin',
     month: '', day: 'Weekend', hourStart: 11, hourEnd: 16,
     delta: true, normalizePerHour: true,
     compare: { month: '', day: 'Weekday', hourStart: 11, hourEnd: 16 },
     selections: {
       subway: [
-        617,  // Atlantic Av-Barclays Ctr (B,D,N,Q,R,2,3,4,5) — South Brooklyn
-        339,  // Bergen St (2,3)
-        236,  // Bergen St (F,G)
-        237,  // Carroll St (F,G)
-        345,  // Crown Hts-Utica Av (3,4)
-        1,    // Astoria-Ditmars Blvd (N,W)
-        616,  // Jackson Hts-Roosevelt Av (E,F,M,R)
-        301,  // 181 St (1) — Washington Heights
-        144,  // Dyckman St (A) — Inwood
+        298,  // 207 St (1) — deep Inwood
+        143,  // Inwood-207 St (A)
+        300,  // 191 St (1) — Washington Heights interior
+        146,  // 181 St (A)
+        301,  // 181 St (1)
+        304,  // 145 St (1) — Hamilton Heights
+        437,  // 145 St (3) — Harlem interior
+        306,  // 125 St (1) — East Harlem
       ],
       taxi: [
-        52,   // Cobble Hill
-        61,   // Crown Heights North
-        62,   // Crown Heights South
-        7,    // Astoria
-        129,  // Jackson Heights
+        127,  // Inwood
         243,  // Washington Heights North
         244,  // Washington Heights South
-        226,  // Sunnyside
-        227,  // Sunset Park East
-        228,  // Sunset Park West
+        116,  // Hamilton Heights
+        152,  // Manhattanville
+        74,   // East Harlem North
+        75,   // East Harlem South
       ],
       citibike: [
-        '4143.04',  // 3 Ave & Carroll St — Carroll Gardens
-        '4354.07',  // Atlantic Ave & Fort Greene Pl — Fort Greene
-        '3865.05',  // 3 St & Prospect Park West — Prospect Park
-        '4281.08',  // Bergen St & Flatbush Ave — Crown Heights edge
-        '4446.01',  // Bergen St & Smith St — Cobble Hill
-        '8069.01',  // Amsterdam Ave & W 152 St — Washington Heights
-        '8172.07',  // Amsterdam Ave & W 162 St — Washington Heights
+        '8394.15',  // Amsterdam Ave & W 186 St — deep Washington Heights
+        '8278.05',  // Amsterdam Ave & W 175 St
+        '8172.07',  // Amsterdam Ave & W 162 St
+        '8069.01',  // Amsterdam Ave & W 152 St
+        '7511.19',  // 5 Ave & E 103 St — East Harlem
+        '7414.17',  // 3 Ave & E 100 St
+      ],
+    },
+  },
+ 
+  // ─────────────────────────────────────────────────────────────────────────
+  // "Where do Brooklyn residents go on weekends?"
+  // Origins: deep residential — Canarsie, East New York, Flatbush interior,
+  //          Crown Heights east of Utica, Bed-Stuy interior
+  // Destinations emerge: does everyone go to Prospect Park? Williamsburg? DUMBO?
+  // ─────────────────────────────────────────────────────────────────────────
+  'weekend-daytime-brooklyn': {
+    label: 'Weekend — Brooklyn',
+    mode: 'origin',
+    month: '', day: 'Weekend', hourStart: 11, hourEnd: 16,
+    delta: true, normalizePerHour: true,
+    compare: { month: '', day: 'Weekday', hourStart: 11, hourEnd: 16 },
+    selections: {
+      subway: [
+        138,  // Canarsie-Rockaway Pkwy (L) — eastern terminus
+        352,  // New Lots Av (3) — East New York
+        136,  // New Lots Av (L)
+        359,  // Flatbush Av-Brooklyn College (2,5) — south terminus
+        345,  // Crown Hts-Utica Av (3,4) — interior Crown Heights
+        181,  // Utica Av (A,C) — East Flatbush border
+        348,  // Rockaway Av (3) — Brownsville
+      ],
+      taxi: [
+        39,   // Canarsie
+        35,   // Brownsville
+        76,   // East New York
+        77,   // East New York/Pennsylvania Avenue
+        91,   // Flatlands
+        62,   // Crown Heights South
+        61,   // Crown Heights North
+      ],
+      citibike: [
+        '3742.11',  // Carroll St & Rochester Ave — interior Crown Heights
+        '3782.03',  // Carroll St & Utica Ave — deep Crown Heights
+        '3845.05',  // Eastern Pkwy & Ralph Ave
+        '3853.02',  // Eastern Pkwy & Rochester Ave
+        '3486.02',  // Clarkson Ave & Utica Ave — deep Flatbush
+        '3671.01',  // E New York Ave & Utica Ave — East Flatbush
+        '3680.04',  // E New York Ave & Troy Ave
+      ],
+    },
+  },
+ 
+  // ─────────────────────────────────────────────────────────────────────────
+  // "Where do Queens residents go on weekends?"
+  // Origins: deep residential — Flushing, Jamaica, Ozone Park, Howard Beach,
+  //          Forest Hills, Kew Gardens, Corona interior
+  // Destinations emerge: do they stay in Queens or cross into Manhattan/Brooklyn?
+  // ─────────────────────────────────────────────────────────────────────────
+  'weekend-daytime-queens': {
+    label: 'Weekend — Queens',
+    mode: 'origin',
+    month: '', day: 'Weekend', hourStart: 11, hourEnd: 16,
+    delta: true, normalizePerHour: true,
+    compare: { month: '', day: 'Weekday', hourStart: 11, hourEnd: 16 },
+    selections: {
+      subway: [
+        447,  // Flushing-Main St (7) — Queens hub terminus
+        278,  // Jamaica Center-Parsons/Archer (E,J,Z) — Jamaica terminus
+        254,  // Jamaica-179 St (F)
+        195,  // Ozone Park-Lefferts Blvd (A)
+        198,  // Howard Beach-JFK Airport (A)
+        209,  // Far Rockaway-Mott Av (A)
+        261,  // Forest Hills-71 Av (E,F,M,R)
+        259,  // Kew Gardens-Union Tpke (E,F)
+      ],
+      taxi: [
+        89,   // Flushing
+        128,  // Jamaica
+        130,  // Jamaica Estates
+        180,  // Ozone Park
+        121,  // Howard Beach
+        95,   // Forest Hills
+        134,  // Kew Gardens
+        56,   // Corona
+        129,  // Jackson Heights
+      ],
+      citibike: [
+        '7144.02',  // 31 St & Ditmars Blvd — deep Astoria
+        '6782.01',  // 31 Ave & Steinway St — Astoria interior
+        '7018.01',  // 31 St & Hoyt Ave N
+        '6989.07',  // 31 St & Astoria Blvd
+        '6651.01',  // 104 St & Northern Blvd — Corona/Jackson Heights
+        '6618.02',  // 100 St & Northern Blvd
+      ],
+    },
+  },
+ 
+  // ─────────────────────────────────────────────────────────────────────────
+  // "Where do Bronx residents go on weekends?"
+  // Origins: deep residential — Wakefield, Pelham Bay, Parkchester,
+  //          West Farms, Soundview — all interior residential
+  // Destinations emerge: do they go to Manhattan or stay in the Bronx?
+  // ─────────────────────────────────────────────────────────────────────────
+  'weekend-daytime-bronx': {
+    label: 'Weekend — Bronx',
+    mode: 'origin',
+    month: '', day: 'Weekend', hourStart: 11, hourEnd: 16,
+    delta: true, normalizePerHour: true,
+    compare: { month: '', day: 'Weekday', hourStart: 11, hourEnd: 16 },
+    selections: {
+      subway: [
+        416,  // Wakefield-241 St (2) — north Bronx terminus
+        417,  // Nereid Av (2,5)
+        418,  // 233 St (2,5)
+        360,  // Pelham Bay Park (6) — east Bronx terminus
+        361,  // Buhre Av (6)
+        362,  // Middletown Rd (6)
+        366,  // Parkchester (6) — dense residential hub
+        431,  // Intervale Av (2,5) — South Bronx interior
+        429,  // Freeman St (2,5)
+      ],
+      taxi: [
+        3,    // Allerton/Pelham Gardens
+        174,  // Norwood
+        183,  // Pelham Bay
+        182,  // Parkchester
+        259,  // Woodlawn/Wakefield
+        212,  // Soundview/Bruckner
+        213,  // Soundview/Castle Hill
+        250,  // Westchester Village/Unionport
+      ],
+      citibike: [
+        '8315.03',  // 3 Ave & E Tremont Ave — Tremont residential
+        '8356.04',  // Anthony Ave & E Tremont Ave
+        '8293.12',  // Arthur Ave & E Tremont Ave
+        '8248.05',  // Boston Rd & E 178 St — deep residential
+        '8212.01',  // Boston Rd & West Farms Rd
+        '8494.01',  // E 182 St & Morris Ave — Fordham area
       ],
     },
   },
@@ -714,6 +977,7 @@ const PRESETS = {
   // NOTE: requires `event` flag in data pipeline (not yet in CSV data)
   // ─────────────────────────────────────────────────────────────────────────
   'post-game-dispersal': {
+    label: 'Post-Game',
     mode: 'origin',
     month: '', day: 'Weekday', hourStart: 21, hourEnd: 23,
     delta: true, normalizePerHour: true,
@@ -742,6 +1006,19 @@ const PRESETS = {
   },
 
 };
+
+// Render preset buttons dynamically from the PRESETS object
+(function renderPresetButtons() {
+  const group = document.getElementById('preset-group');
+  Object.entries(PRESETS).forEach(([key, preset]) => {
+    if (!preset.label) return;
+    const btn = document.createElement('button');
+    btn.textContent = preset.label;
+    btn.onclick = () => applyPreset(key);
+    group.appendChild(btn);
+  });
+})();
+
 async function applyPreset(name) {
   const p = PRESETS[name];
   if (!p) return;
@@ -937,6 +1214,7 @@ function renderDeltaResults(dataA, dataB) {
       const feat = taxiGeoJson.features.find(f => f.properties.LocationID === d.station_id);
       if (!feat) return;
       marker = L.geoJSON(feat, {
+        pane: 'taxiPane',
         style: {
           fillColor: interpolateDeltaColor(ratio),
           fillOpacity: 0.15 + absRatio * 0.65,
@@ -963,6 +1241,8 @@ function renderDeltaResults(dataA, dataB) {
   const label = mode === 'dest' ? 'Origins Δ' : 'Destinations Δ';
   document.getElementById('right-label').textContent = `${label}: ${deltas.length}`;
   document.getElementById('status-right').textContent = `A vs B — cyan = more A, orange = more B`;
+
+  // Heatmap shows absolute magnitude of change
 }
 
 function interpolateDeltaColor(ratio) {
@@ -983,6 +1263,276 @@ function interpolateDeltaColor(ratio) {
     if (selectedIds.size > 0) fetchResults();
   });
 });
+
+
+// ── Hourly chart ──
+
+async function fetchHourlyData() {
+  if (selectedIds.size === 0) { renderHourlyChart(null); return; }
+
+  const byDataset = groupSelectedByDataset();
+  const idParam = mode === 'dest' ? 'dest_ids' : 'origin_ids';
+  const month = document.getElementById('month').value;
+  const day = document.getElementById('day').value;
+  const mc = document.getElementById('member-casual').value;
+
+  function buildParams(ds, ids) {
+    const p = new URLSearchParams();
+    p.set(idParam, ids.join(','));
+    if (month) p.set('month', month);
+    if (day) p.set('day_of_week', day);
+    if (ds === 'citibike' && mc) p.set('member_casual', mc);
+    return p;
+  }
+
+  try {
+    const results = await Promise.all(
+      Object.entries(byDataset).map(([ds, ids]) =>
+        fetch(`/api/${ds}/hourly?${buildParams(ds, ids)}`).then(r => r.json())
+      )
+    );
+    const hourMap = new Array(24).fill(0);
+    results.forEach(data => data.forEach(d => { hourMap[d.hour] += d.total; }));
+    renderHourlyChart(hourMap);
+  } catch(e) { console.error(e); }
+}
+
+function renderHourlyChart(hourData) {
+  const svgEl = document.getElementById('hourly-svg');
+  if (!svgEl) return;
+
+  const svg = d3.select('#hourly-svg');
+  svg.selectAll('*').remove();
+
+  const containerH = 185;
+  const margin = { top: 22, right: 16, bottom: 28, left: 48 };
+  const W = svgEl.parentElement.clientWidth - 32;
+  const H = containerH - 8; // leave room for container padding
+  svg.attr('width', W).attr('height', H);
+
+  const width = W - margin.left - margin.right;
+  const height = H - margin.top - margin.bottom;
+
+  // Title
+  const hs = document.getElementById('hour-start').value;
+  const he = document.getElementById('hour-end').value;
+  const hasFilter = hs !== '' && he !== '';
+  const dirLabel = mode === 'dest' ? 'at Selected Destinations' : 'at Selected Origins';
+  const titleText = hourData && !hourData.every(v => v === 0)
+    ? `Hourly Traffic ${dirLabel}`
+    : 'Hourly Traffic — select a region to see the daily pattern';
+
+  svg.append('text')
+    .attr('x', margin.left)
+    .attr('y', 13)
+    .attr('fill', '#a0a0c0')
+    .attr('font-size', '11px')
+    .text(titleText);
+
+  // Legend (only shown when a filter is active and we have data)
+  if (hourData && !hourData.every(v => v === 0)) {
+    const legendX = W - margin.right;
+    const ly = 8;
+    const legendItems = hasFilter
+      ? [{ color: '#00d2ff', label: 'In filter window' }, { color: '#334155', label: 'Outside window' }]
+      : [{ color: '#00d2ff', label: 'All hours' }];
+
+    legendItems.forEach((item, i) => {
+      const lx = legendX - (legendItems.length - i) * 115;
+      svg.append('rect').attr('x', lx).attr('y', ly - 7).attr('width', 9).attr('height', 9)
+        .attr('fill', item.color).attr('rx', 1);
+      svg.append('text').attr('x', lx + 12).attr('y', ly + 1)
+        .attr('fill', '#a0a0c0').attr('font-size', '10px').text(item.label);
+    });
+  }
+
+  if (!hourData || hourData.every(v => v === 0)) return;
+
+  function inRange(h) {
+    if (!hasFilter) return true;
+    const s = parseInt(hs), e = parseInt(he);
+    return s <= e ? (h >= s && h <= e) : (h >= s || h <= e);
+  }
+
+  const data = d3.range(24).map(h => ({ hour: h, total: hourData[h] || 0, active: inRange(h) }));
+
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  const x = d3.scaleBand().domain(d3.range(24)).range([0, width]).padding(0.12);
+  const y = d3.scaleLinear().domain([0, d3.max(data, d => d.total)]).nice().range([height, 0]);
+
+  // Subtle horizontal grid lines
+  g.append('g')
+    .call(d3.axisLeft(y).ticks(4).tickSize(-width).tickFormat(''))
+    .call(ax => {
+      ax.select('.domain').remove();
+      ax.selectAll('.tick line').attr('stroke', '#2a3a5e').attr('stroke-dasharray', '3,3');
+    });
+
+  // Hour-range highlight band
+  if (hasFilter) {
+    data.filter(d => d.active).forEach(d => {
+      g.append('rect')
+        .attr('x', x(d.hour)).attr('y', 0)
+        .attr('width', x.bandwidth()).attr('height', height)
+        .attr('fill', '#e94560').attr('opacity', 0.07);
+    });
+  }
+
+  // Bars
+  g.selectAll('.bar')
+    .data(data)
+    .join('rect')
+    .attr('class', 'bar')
+    .attr('x', d => x(d.hour))
+    .attr('y', d => y(d.total))
+    .attr('width', x.bandwidth())
+    .attr('height', d => height - y(d.total))
+    .attr('fill', d => d.active ? '#00d2ff' : '#334155')
+    .attr('opacity', d => d.active ? 0.9 : 0.6)
+    .append('title').text(d => `${String(d.hour).padStart(2,'0')}:00 — ${d.total.toLocaleString()}`);
+
+  // X axis
+  g.append('g')
+    .attr('transform', `translate(0,${height})`)
+    .call(d3.axisBottom(x)
+      .tickValues([0, 3, 6, 9, 12, 15, 18, 21, 23])
+      .tickFormat(h => `${String(h).padStart(2,'0')}:00`))
+    .call(ax => {
+      ax.select('.domain').attr('stroke', '#2a3a5e');
+      ax.selectAll('.tick line').attr('stroke', '#2a3a5e');
+      ax.selectAll('.tick text').attr('fill', '#a0a0c0').attr('font-size', '9px');
+    });
+
+  // Y axis
+  g.append('g')
+    .call(d3.axisLeft(y).ticks(4).tickFormat(d3.format('.2~s')))
+    .call(ax => {
+      ax.select('.domain').remove();
+      ax.selectAll('.tick line').remove();
+      ax.selectAll('.tick text').attr('fill', '#a0a0c0').attr('font-size', '9px');
+    });
+
+  // Y axis label
+  g.append('text')
+    .attr('transform', 'rotate(-90)')
+    .attr('x', -height / 2).attr('y', -40)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#606080').attr('font-size', '9px')
+    .text('ridership');
+}
+
+// ── Tab switching ──
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.ctrl-panel').forEach(p => p.style.display = 'none');
+  // Activate matching tab button
+  document.querySelectorAll('#ctrl-tab-bar .tab-btn').forEach(b => {
+    if (b.textContent.toLowerCase().includes(
+          name === 'conditions' ? 'set' : name === 'presets' ? 'preset' : 'ask'))
+      b.classList.add('active');
+  });
+  document.getElementById('tab-' + name).style.display = 'flex';
+}
+
+// ── Ask AI ──
+
+function handleAIQuery() {
+  const q = document.getElementById('ai-query').value.trim();
+  if (!q) return;
+  const el = document.getElementById('ai-response');
+  el.className = 'ai-response ai-thinking';
+  el.innerHTML = '⟳ Interpreting…';
+
+  setTimeout(() => {
+    const result = interpretQuery(q);
+    el.className = 'ai-response';
+    if (result) {
+      el.innerHTML = result.html;
+      result.apply();
+    } else {
+      el.innerHTML = '<span class="ai-note">Matched nothing — in production a language model would parse this and set conditions automatically.</span>';
+    }
+  }, 650);
+}
+
+function interpretQuery(q) {
+  const rules = [
+    {
+      re: /knick|ranger|msg|madison square|garden.*game|game.*garden/i,
+      label: 'Game night at MSG',
+      chips: ['Evenings 19:00–23:00', 'Weekday / Weekend', 'MSG departure cluster'],
+      apply() { document.getElementById('hour-start').value=19; document.getElementById('hour-end').value=23; }
+    },
+    {
+      re: /barclay|net.*game|game.*net|brooklyn.*game/i,
+      label: 'Game night at Barclays Center',
+      chips: ['Evenings 19:00–23:00', 'Barclays departure cluster'],
+      apply() { document.getElementById('hour-start').value=19; document.getElementById('hour-end').value=23; }
+    },
+    {
+      re: /rain|wet|storm|umbrella|precipit/i,
+      label: 'Rainy day',
+      chips: ['Rain ≥ 5 mm', 'All hours'],
+      apply() {
+        const r = document.getElementById('rain-threshold');
+        r.value = 5;
+        document.getElementById('rain-label').textContent = '5 mm';
+      }
+    },
+    {
+      re: /friday night|fri.*night|night.*fri|friday.*evening/i,
+      label: 'Friday night',
+      chips: ['Friday', '19:00–23:00'],
+      apply() {
+        document.getElementById('day').value = 'Friday';
+        document.getElementById('hour-start').value = 19;
+        document.getElementById('hour-end').value = 23;
+        if (selectedIds.size > 0) fetchResults();
+      }
+    },
+    {
+      re: /weekend|saturday|sunday/i,
+      label: 'Weekend',
+      chips: ['Saturday & Sunday', 'All hours'],
+      apply() { document.getElementById('day').value = 'Weekend'; if (selectedIds.size > 0) fetchResults(); }
+    },
+    {
+      re: /morning|commute|rush hour|9.?to.?5|peak/i,
+      label: 'Morning rush hour',
+      chips: ['Weekday', '07:00–09:00'],
+      apply() {
+        document.getElementById('day').value = 'Weekday';
+        document.getElementById('hour-start').value = 7;
+        document.getElementById('hour-end').value = 9;
+        if (selectedIds.size > 0) fetchResults();
+      }
+    },
+    {
+      re: /late night|midnight|bar|club|nightlife/i,
+      label: 'Late night / nightlife',
+      chips: ['Friday & Saturday', '22:00–02:00'],
+      apply() {
+        document.getElementById('day').value = 'Friday';
+        document.getElementById('hour-start').value = 22;
+        document.getElementById('hour-end').value = 2;
+        if (selectedIds.size > 0) fetchResults();
+      }
+    },
+  ];
+
+  for (const r of rules) {
+    if (r.re.test(q)) {
+      const chipHtml = r.chips.map(c => `<span class="ai-chip">${c}</span>`).join('');
+      return {
+        html: `<b style="color:#e0e0e0">${r.label}</b> — ${chipHtml}`,
+        apply: r.apply,
+      };
+    }
+  }
+  return null;
+}
 
 // Init
 loadDatasetStations('subway');

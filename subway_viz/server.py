@@ -454,6 +454,126 @@ def taxi_hourly(
     return df.to_dict(orient="records")
 
 
+# ── Clustering (system-wide daily patterns) ──
+
+
+@lru_cache(maxsize=128)
+def _daily_matrix(dataset: str, station_id: Optional[int] = None, role: str = "either"):
+    """Return (dates, matrix) where matrix is [n_days, 24] of ridership.
+    station_id=None means system-wide.
+    role in {'origin', 'destination', 'either'} — only used when station_id is set.
+    """
+    con = get_con(dataset)
+    if dataset == "subway":
+        where = ""
+        if station_id is not None:
+            if role == "origin":
+                where = f'WHERE "Origin Station Complex ID" = {station_id}'
+            elif role == "destination":
+                where = f'WHERE "Destination Station Complex ID" = {station_id}'
+            else:  # either
+                where = (f'WHERE "Origin Station Complex ID" = {station_id} '
+                         f'OR "Destination Station Complex ID" = {station_id}')
+        df = con.execute(f"""
+            SELECT DATE_TRUNC('day', Timestamp) AS date,
+                   "Hour of Day" AS hour,
+                   SUM("Estimated Average Ridership") AS ridership
+            FROM subway_data
+            {where}
+            GROUP BY 1, 2
+            ORDER BY 1, 2
+        """).fetchdf()
+    else:
+        df = con.execute("""
+            SELECT CAST(started_at AS DATE) AS date,
+                   HOUR(started_at) AS hour,
+                   COUNT(*) AS ridership
+            FROM rides
+            GROUP BY 1, 2
+            ORDER BY 1, 2
+        """).fetchdf()
+    con.close()
+    if len(df) == 0:
+        return [], []
+    pivot = df.pivot(index="date", columns="hour", values="ridership").fillna(0)
+    for h in range(24):
+        if h not in pivot.columns:
+            pivot[h] = 0
+    pivot = pivot.reindex(columns=range(24))
+    dates = [d.strftime("%Y-%m-%d") for d in pivot.index]
+    matrix = pivot.values.astype(float)
+    return dates, matrix
+
+
+@lru_cache(maxsize=128)
+def _linkage(dataset: str, station_id: Optional[int] = None, role: str = "either"):
+    from scipy.cluster.hierarchy import linkage
+    _, matrix = _daily_matrix(dataset, station_id, role)
+    if len(matrix) < 2:
+        return None
+    Z = linkage(matrix, method="ward")
+    return Z
+
+
+@app.get("/api/{dataset}/clustering")
+def clustering(
+    dataset: str,
+    k: int = 5,
+    station_id: Optional[int] = None,
+    role: str = "either",
+):
+    from scipy.cluster.hierarchy import fcluster
+    if dataset not in ("subway", "citibike"):
+        return {"error": "invalid dataset"}
+    if role not in ("origin", "destination", "either"):
+        role = "either"
+    dates, matrix = _daily_matrix(dataset, station_id, role)
+    if len(dates) < 2:
+        return {"dates": [], "date_to_cluster": {}, "clusters": [], "k": 0, "max_k": 0}
+    Z = _linkage(dataset, station_id, role)
+    k = max(1, min(k, len(dates)))
+    labels = fcluster(Z, t=k, criterion="maxclust")
+
+    clusters = {}
+    for i, lbl in enumerate(labels):
+        clusters.setdefault(int(lbl), []).append(i)
+
+    # Build cluster summaries
+    result_clusters = []
+    for lbl, idxs in clusters.items():
+        mean_pattern = matrix[idxs].mean(axis=0).tolist()
+        result_clusters.append({
+            "id": lbl,
+            "size": len(idxs),
+            "mean_pattern": mean_pattern,
+            "dates": [dates[i] for i in idxs],
+        })
+    # Sort clusters by total daily ridership (so colors are consistent by magnitude)
+    result_clusters.sort(key=lambda c: -sum(c["mean_pattern"]))
+    # Reassign stable 1..k ids
+    id_map = {c["id"]: new_id for new_id, c in enumerate(result_clusters, start=1)}
+    for c in result_clusters:
+        c["id"] = id_map[c["id"]]
+
+    date_to_cluster = {}
+    for c in result_clusters:
+        for d in c["dates"]:
+            date_to_cluster[d] = c["id"]
+
+    return {
+        "dates": dates,
+        "date_to_cluster": date_to_cluster,
+        "clusters": result_clusters,
+        "k": k,
+        "max_k": len(dates),
+    }
+
+
+@app.get("/clustering", response_class=HTMLResponse)
+def clustering_page():
+    return (Path(__file__).parent / "clustering.html").read_text()
+
+
 @app.get("/", response_class=HTMLResponse)
 def index():
     return (Path(__file__).parent / "index.html").read_text()

@@ -166,6 +166,7 @@
       <button id="btn-delta" onclick="toggleDeltaMode()">Δ Compare</button>
       <button onclick="clearSelection()">Clear</button>
       <button onclick="excludedIds.clear();reRenderResults()">Clear Excl.</button>
+      <button type="button" onclick="goToClusters()">📅 Clusters</button>
     </div>
   </div>
 
@@ -672,6 +673,29 @@ function clearSelection() {
   clearResults();
   renderHourlyChart(null);
 }
+
+function goToClusters() {
+  const subwayIds = [...selectedIds]
+    .filter(key => dsOfKey(key) === 'subway')
+    .map(key => key.slice(key.indexOf(':') + 1));
+
+  if (subwayIds.length === 0) {
+    window.location.href = '/clustering';
+    return;
+  }
+
+  if (subwayIds.length > 1) {
+    window.alert('Select exactly one subway station to open its cluster view.');
+    return;
+  }
+
+  const params = new URLSearchParams({
+    station_id: subwayIds[0],
+    role: mode === 'dest' ? 'destination' : 'origin',
+  });
+  window.location.href = `/clustering?${params.toString()}`;
+}
+
 const PRESETS = {
 
   // ─────────────────────────────────────────────────────────────────────────

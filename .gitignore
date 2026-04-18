@@ -7,3 +7,5 @@ __pycache__/
 .vite
 *.duckdb
 subway_2025
+mta_ridership.db
+*.csv

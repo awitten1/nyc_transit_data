@@ -57,12 +57,6 @@
   <select id="station-select" style="background:#1a1a2e;color:#e0e0e0;border:1px solid #0f3460;padding:4px 8px;border-radius:4px;min-width:260px;">
     <option value="">System-wide (all stations)</option>
   </select>
-  <label id="role-label" style="display:none;">Count:</label>
-  <select id="role-select" style="display:none;background:#1a1a2e;color:#e0e0e0;border:1px solid #0f3460;padding:4px 8px;border-radius:4px;">
-    <option value="either">Arrivals + Departures</option>
-    <option value="origin">Departures only</option>
-    <option value="destination">Arrivals only</option>
-  </select>
   <label>Clusters:</label>
   <input type="range" id="k-slider" min="2" max="12" value="5">
   <span id="k-display">5</span>
@@ -103,11 +97,9 @@ async function loadStations() {
 
 async function load(k) {
   const stationId = document.getElementById('station-select').value;
-  const role = document.getElementById('role-select').value;
   const params = new URLSearchParams({ k });
   if (stationId) {
     params.set('station_id', stationId);
-    params.set('role', role);
   }
   const resp = await fetch(`/api/subway/clustering?${params}`);
   currentData = await resp.json();
@@ -275,14 +267,7 @@ document.getElementById('k-slider').addEventListener('change', (e) => {
   load(parseInt(e.target.value));
 });
 
-document.getElementById('station-select').addEventListener('change', (e) => {
-  const hasStation = !!e.target.value;
-  document.getElementById('role-label').style.display = hasStation ? '' : 'none';
-  document.getElementById('role-select').style.display = hasStation ? '' : 'none';
-  highlightCluster = null;
-  load(parseInt(document.getElementById('k-slider').value));
-});
-document.getElementById('role-select').addEventListener('change', () => {
+document.getElementById('station-select').addEventListener('change', () => {
   highlightCluster = null;
   load(parseInt(document.getElementById('k-slider').value));
 });
@@ -290,15 +275,8 @@ document.getElementById('role-select').addEventListener('change', () => {
 loadStations().then(() => {
   const urlParams = new URLSearchParams(window.location.search);
   const stationId = urlParams.get('station_id');
-  const role = urlParams.get('role');
   if (stationId) {
-    const sel = document.getElementById('station-select');
-    sel.value = stationId;
-    if (sel.value) {
-      document.getElementById('role-label').style.display = '';
-      document.getElementById('role-select').style.display = '';
-      if (role) document.getElementById('role-select').value = role;
-    }
+    document.getElementById('station-select').value = stationId;
   }
   load(5);
 });

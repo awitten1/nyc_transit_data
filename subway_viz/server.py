@@ -11,6 +11,7 @@ from typing import Optional
 app = FastAPI()
 
 SUBWAY_DB = Path(__file__).parent.parent / "subway_2025"
+SUBWAY_HOURLY_DB = Path(__file__).parent.parent / "subway_hourly_2025"
 CITIBIKE_DB = Path(__file__).parent.parent / "citibike_data.duckdb"
 TAXI_PARQUET_GLOB = str(Path(__file__).parent.parent / "data/yellow_taxi_records/yellow_taxi_*.parquet")
 TAXI_ZONES_FILE = Path(__file__).parent.parent / "taxi_viz/zones_cache.geojson"
@@ -463,27 +464,23 @@ def _daily_matrix(dataset: str, station_id: Optional[int] = None, role: str = "e
     station_id=None means system-wide.
     role in {'origin', 'destination', 'either'} — only used when station_id is set.
     """
-    con = get_con(dataset)
     if dataset == "subway":
-        where = ""
+        con = duckdb.connect(str(SUBWAY_HOURLY_DB), read_only=True)
+        clauses = ["YEAR(transit_timestamp) = 2025"]
         if station_id is not None:
-            if role == "origin":
-                where = f'WHERE "Origin Station Complex ID" = {station_id}'
-            elif role == "destination":
-                where = f'WHERE "Destination Station Complex ID" = {station_id}'
-            else:  # either
-                where = (f'WHERE "Origin Station Complex ID" = {station_id} '
-                         f'OR "Destination Station Complex ID" = {station_id}')
+            clauses.append(f"station_complex_id = '{station_id}'")
+        where = "WHERE " + " AND ".join(clauses)
         df = con.execute(f"""
-            SELECT DATE_TRUNC('day', Timestamp) AS date,
-                   "Hour of Day" AS hour,
-                   SUM("Estimated Average Ridership") AS ridership
-            FROM subway_data
+            SELECT CAST(transit_timestamp AS DATE) AS date,
+                   HOUR(transit_timestamp) AS hour,
+                   SUM(ridership) AS ridership
+            FROM subway_hourly_2025
             {where}
             GROUP BY 1, 2
             ORDER BY 1, 2
         """).fetchdf()
     else:
+        con = get_con(dataset)
         df = con.execute("""
             SELECT CAST(started_at AS DATE) AS date,
                    HOUR(started_at) AS hour,

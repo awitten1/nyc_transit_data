@@ -566,6 +566,30 @@ def clustering(
     }
 
 
+WEATHER_CSV = Path(__file__).parent.parent / "nyc_weather_data.csv"
+
+
+@lru_cache(maxsize=1)
+def _weather():
+    import csv
+    out = {}
+    with open(WEATHER_CSV) as f:
+        for row in csv.DictReader(f):
+            try:
+                out[row["date"]] = {
+                    "rain_in": float(row["rain_in"]) if row["rain_in"] else None,
+                    "temp_max_f": float(row["temp_max_f"]) if row["temp_max_f"] else None,
+                }
+            except ValueError:
+                pass
+    return out
+
+
+@app.get("/api/weather")
+def weather():
+    return _weather()
+
+
 @app.get("/clustering", response_class=HTMLResponse)
 def clustering_page():
     return (Path(__file__).parent / "clustering.html").read_text()

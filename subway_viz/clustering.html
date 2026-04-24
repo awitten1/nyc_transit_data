@@ -72,6 +72,21 @@
     <h2>Average Hourly Pattern per Cluster</h2>
     <svg id="chart"></svg>
     <div class="legend" id="legend"></div>
+    <div id="weather-panel" style="display:none; margin-top:16px; padding-top:12px; border-top:1px solid #0f3460;">
+      <h2 style="font-size:13px; margin-bottom:8px;" id="weather-title">Weather — Cluster</h2>
+      <div style="display:flex; gap:20px;">
+        <div style="flex:1;">
+          <div style="font-size:11px; color:#a0a0c0; margin-bottom:4px;">Total daily rainfall (in)</div>
+          <svg id="rain-hist" width="100%" height="110"></svg>
+          <div id="rain-stats" style="font-size:11px; color:#a0a0c0; margin-top:2px;"></div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:11px; color:#a0a0c0; margin-bottom:4px;">Max temperature (°F)</div>
+          <svg id="temp-hist" width="100%" height="110"></svg>
+          <div id="temp-stats" style="font-size:11px; color:#a0a0c0; margin-top:2px;"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -82,6 +97,12 @@ const WEEKDAYS = ['M','T','W','T','F','S','S']; // Monday-first
 
 let currentData = null;
 let highlightCluster = null;
+let weatherData = null;
+
+async function loadWeather() {
+  const resp = await fetch('/api/weather');
+  weatherData = await resp.json();
+}
 
 async function loadStations() {
   const resp = await fetch('/api/subway/stations');
@@ -253,9 +274,109 @@ function renderLegend() {
       renderCalendar();
       renderChart();
       renderLegend();
+      renderWeather();
     });
     lg.appendChild(item);
   });
+}
+
+function renderHist(svgId, values, binEdges, color, fmt) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  const w = svg.clientWidth || 300;
+  const h = 110;
+  const padL = 28, padR = 6, padT = 6, padB = 22;
+  const counts = new Array(binEdges.length - 1).fill(0);
+  values.forEach(v => {
+    for (let i = 0; i < counts.length; i++) {
+      if (v >= binEdges[i] && (i === counts.length - 1 ? v <= binEdges[i+1] : v < binEdges[i+1])) {
+        counts[i]++;
+        break;
+      }
+    }
+  });
+  const maxC = Math.max(1, ...counts);
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const barW = plotW / counts.length;
+  const ns = 'http://www.w3.org/2000/svg';
+  counts.forEach((c, i) => {
+    const bh = (c / maxC) * plotH;
+    const r = document.createElementNS(ns, 'rect');
+    r.setAttribute('x', padL + i * barW + 1);
+    r.setAttribute('y', padT + plotH - bh);
+    r.setAttribute('width', Math.max(1, barW - 2));
+    r.setAttribute('height', bh);
+    r.setAttribute('fill', color);
+    svg.appendChild(r);
+  });
+  // x-axis tick labels at every bin edge (skip some if many)
+  const step = counts.length > 8 ? 2 : 1;
+  for (let i = 0; i < binEdges.length; i += step) {
+    const t = document.createElementNS(ns, 'text');
+    t.setAttribute('x', padL + i * barW);
+    t.setAttribute('y', h - 8);
+    t.setAttribute('fill', '#a0a0c0');
+    t.setAttribute('font-size', '9');
+    t.setAttribute('text-anchor', 'middle');
+    t.textContent = fmt(binEdges[i]);
+    svg.appendChild(t);
+  }
+  // y-axis max
+  const yt = document.createElementNS(ns, 'text');
+  yt.setAttribute('x', padL - 4);
+  yt.setAttribute('y', padT + 8);
+  yt.setAttribute('fill', '#a0a0c0');
+  yt.setAttribute('font-size', '9');
+  yt.setAttribute('text-anchor', 'end');
+  yt.textContent = maxC;
+  svg.appendChild(yt);
+  const yb = document.createElementNS(ns, 'text');
+  yb.setAttribute('x', padL - 4);
+  yb.setAttribute('y', padT + plotH);
+  yb.setAttribute('fill', '#a0a0c0');
+  yb.setAttribute('font-size', '9');
+  yb.setAttribute('text-anchor', 'end');
+  yb.textContent = '0';
+  svg.appendChild(yb);
+}
+
+function renderWeather() {
+  const panel = document.getElementById('weather-panel');
+  if (highlightCluster === null || !weatherData) {
+    panel.style.display = 'none';
+    return;
+  }
+  const c = currentData.clusters.find(x => x.id === highlightCluster);
+  if (!c) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  document.getElementById('weather-title').textContent = `Weather — Cluster ${c.id} (${c.size} days)`;
+
+  const rains = [];
+  const temps = [];
+  c.dates.forEach(d => {
+    const w = weatherData[d];
+    if (!w) return;
+    if (w.rain_in !== null && w.rain_in !== undefined) rains.push(w.rain_in);
+    if (w.temp_max_f !== null && w.temp_max_f !== undefined) temps.push(w.temp_max_f);
+  });
+
+  const rainBins = [0, 0.01, 0.1, 0.25, 0.5, 1, 2, 4];
+  const tempBins = [];
+  for (let t = 20; t <= 100; t += 10) tempBins.push(t);
+
+  renderHist('rain-hist', rains, rainBins, clusterColor(c.id), v => v === 0 ? '0' : v.toString());
+  renderHist('temp-hist', temps, tempBins, clusterColor(c.id), v => v.toString());
+
+  const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+  const rainTotal = rains.reduce((s,x)=>s+x, 0);
+  const dryDays = rains.filter(r => r < 0.01).length;
+  document.getElementById('rain-stats').textContent =
+    `n=${rains.length} • total ${rainTotal.toFixed(1)}" • avg ${mean(rains).toFixed(2)}"/day • dry days ${dryDays}`;
+  document.getElementById('temp-stats').textContent =
+    temps.length
+      ? `n=${temps.length} • avg ${mean(temps).toFixed(1)}°F • range ${Math.min(...temps).toFixed(0)}–${Math.max(...temps).toFixed(0)}°F`
+      : 'no data';
 }
 
 document.getElementById('k-slider').addEventListener('input', (e) => {
@@ -265,13 +386,16 @@ document.getElementById('k-slider').addEventListener('input', (e) => {
 document.getElementById('k-slider').addEventListener('change', (e) => {
   highlightCluster = null;
   load(parseInt(e.target.value));
+  renderWeather();
 });
 
 document.getElementById('station-select').addEventListener('change', () => {
   highlightCluster = null;
   load(parseInt(document.getElementById('k-slider').value));
+  renderWeather();
 });
 
+loadWeather();
 loadStations().then(() => {
   const urlParams = new URLSearchParams(window.location.search);
   const stationId = urlParams.get('station_id');

@@ -96,7 +96,7 @@ const MONTH_NAMES = ['January','February','March','April','May','June','July','A
 const WEEKDAYS = ['M','T','W','T','F','S','S']; // Monday-first
 
 let currentData = null;
-let highlightCluster = null;
+let highlightClusters = new Set();
 let weatherData = null;
 
 async function loadWeather() {
@@ -176,17 +176,13 @@ function renderCalendar() {
         cell.style.background = clusterColor(clusterId);
         cell.dataset.cluster = clusterId;
         cell.dataset.date = dateStr;
-        if (highlightCluster !== null && clusterId === highlightCluster) {
-          cell.classList.add('highlighted');
-        } else if (highlightCluster !== null) {
-          cell.style.opacity = '0.25';
+        if (highlightClusters.size > 0) {
+          if (highlightClusters.has(clusterId)) cell.classList.add('highlighted');
+          else cell.style.opacity = '0.25';
         }
         cell.title = `${dateStr} — Cluster ${clusterId}`;
         cell.addEventListener('click', () => {
-          highlightCluster = highlightCluster === clusterId ? null : clusterId;
-          renderCalendar();
-          renderChart();
-          renderLegend();
+          toggleCluster(clusterId);
         });
       }
       grid.appendChild(cell);
@@ -254,7 +250,7 @@ function renderChart() {
     path.setAttribute('d', d);
     path.setAttribute('fill', 'none');
     path.setAttribute('stroke', clusterColor(c.id));
-    const emph = highlightCluster === null || highlightCluster === c.id;
+    const emph = highlightClusters.size === 0 || highlightClusters.has(c.id);
     path.setAttribute('stroke-width', emph ? '2.5' : '1');
     path.setAttribute('opacity', emph ? '1' : '0.2');
     svg.appendChild(path);
@@ -267,25 +263,25 @@ function renderLegend() {
   currentData.clusters.forEach(c => {
     const item = document.createElement('div');
     item.className = 'legend-item';
-    if (highlightCluster !== null && highlightCluster !== c.id) item.classList.add('dim');
+    if (highlightClusters.size > 0 && !highlightClusters.has(c.id)) item.classList.add('dim');
     item.innerHTML = `<div class="legend-swatch" style="background:${clusterColor(c.id)}"></div>Cluster ${c.id} (${c.size} day${c.size !== 1 ? 's' : ''})`;
     item.addEventListener('click', () => {
-      highlightCluster = highlightCluster === c.id ? null : c.id;
-      renderCalendar();
-      renderChart();
-      renderLegend();
-      renderWeather();
+      toggleCluster(c.id);
     });
     lg.appendChild(item);
   });
 }
 
-function renderHist(svgId, values, binEdges, color, fmt) {
-  const svg = document.getElementById(svgId);
-  svg.innerHTML = '';
-  const w = svg.clientWidth || 300;
-  const h = 110;
-  const padL = 28, padR = 6, padT = 6, padB = 22;
+function toggleCluster(id) {
+  if (highlightClusters.has(id)) highlightClusters.delete(id);
+  else highlightClusters.add(id);
+  renderCalendar();
+  renderChart();
+  renderLegend();
+  renderWeather();
+}
+
+function binValues(values, binEdges) {
   const counts = new Array(binEdges.length - 1).fill(0);
   values.forEach(v => {
     for (let i = 0; i < counts.length; i++) {
@@ -295,26 +291,52 @@ function renderHist(svgId, values, binEdges, color, fmt) {
       }
     }
   });
-  const maxC = Math.max(1, ...counts);
+  return counts;
+}
+
+function renderHist(svgId, series, binEdges, fmt) {
+  // series: [{values, color, label}]
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  const w = svg.clientWidth || 300;
+  const h = 110;
+  const padL = 32, padR = 6, padT = 6, padB = 22;
+  const ns = 'http://www.w3.org/2000/svg';
+  const nBins = binEdges.length - 1;
+  const nSeries = series.length;
+  if (nSeries === 0) return;
+
+  const seriesCounts = series.map(s => binValues(s.values, binEdges));
+  const seriesProps = series.map((s, si) =>
+    seriesCounts[si].map(c => s.values.length ? c / s.values.length : 0)
+  );
+  const maxP = Math.max(0.0001, ...seriesProps.flat());
   const plotW = w - padL - padR;
   const plotH = h - padT - padB;
-  const barW = plotW / counts.length;
-  const ns = 'http://www.w3.org/2000/svg';
-  counts.forEach((c, i) => {
-    const bh = (c / maxC) * plotH;
-    const r = document.createElementNS(ns, 'rect');
-    r.setAttribute('x', padL + i * barW + 1);
-    r.setAttribute('y', padT + plotH - bh);
-    r.setAttribute('width', Math.max(1, barW - 2));
-    r.setAttribute('height', bh);
-    r.setAttribute('fill', color);
-    svg.appendChild(r);
-  });
-  // x-axis tick labels at every bin edge (skip some if many)
-  const step = counts.length > 8 ? 2 : 1;
+  const groupW = plotW / nBins;
+  const barW = Math.max(1, (groupW - 2) / nSeries);
+
+  for (let i = 0; i < nBins; i++) {
+    for (let si = 0; si < nSeries; si++) {
+      const p = seriesProps[si][i];
+      const bh = (p / maxP) * plotH;
+      const r = document.createElementNS(ns, 'rect');
+      r.setAttribute('x', padL + i * groupW + 1 + si * barW);
+      r.setAttribute('y', padT + plotH - bh);
+      r.setAttribute('width', barW);
+      r.setAttribute('height', bh);
+      r.setAttribute('fill', series[si].color);
+      r.setAttribute('opacity', '0.85');
+      const title = document.createElementNS(ns, 'title');
+      title.textContent = `${series[si].label}: ${(p*100).toFixed(0)}% (${seriesCounts[si][i]} days)`;
+      r.appendChild(title);
+      svg.appendChild(r);
+    }
+  }
+  const step = nBins > 8 ? 2 : 1;
   for (let i = 0; i < binEdges.length; i += step) {
     const t = document.createElementNS(ns, 'text');
-    t.setAttribute('x', padL + i * barW);
+    t.setAttribute('x', padL + i * groupW);
     t.setAttribute('y', h - 8);
     t.setAttribute('fill', '#a0a0c0');
     t.setAttribute('font-size', '9');
@@ -322,14 +344,13 @@ function renderHist(svgId, values, binEdges, color, fmt) {
     t.textContent = fmt(binEdges[i]);
     svg.appendChild(t);
   }
-  // y-axis max
   const yt = document.createElementNS(ns, 'text');
   yt.setAttribute('x', padL - 4);
   yt.setAttribute('y', padT + 8);
   yt.setAttribute('fill', '#a0a0c0');
   yt.setAttribute('font-size', '9');
   yt.setAttribute('text-anchor', 'end');
-  yt.textContent = maxC;
+  yt.textContent = `${(maxP*100).toFixed(0)}%`;
   svg.appendChild(yt);
   const yb = document.createElementNS(ns, 'text');
   yb.setAttribute('x', padL - 4);
@@ -343,40 +364,53 @@ function renderHist(svgId, values, binEdges, color, fmt) {
 
 function renderWeather() {
   const panel = document.getElementById('weather-panel');
-  if (highlightCluster === null || !weatherData) {
+  if (highlightClusters.size === 0 || !weatherData) {
     panel.style.display = 'none';
     return;
   }
-  const c = currentData.clusters.find(x => x.id === highlightCluster);
-  if (!c) { panel.style.display = 'none'; return; }
+  const selected = currentData.clusters.filter(c => highlightClusters.has(c.id));
+  if (selected.length === 0) { panel.style.display = 'none'; return; }
   panel.style.display = '';
-  document.getElementById('weather-title').textContent = `Weather — Cluster ${c.id} (${c.size} days)`;
+  document.getElementById('weather-title').textContent =
+    `Weather — ${selected.map(c => `Cluster ${c.id}`).join(', ')}`;
 
-  const rains = [];
-  const temps = [];
-  c.dates.forEach(d => {
-    const w = weatherData[d];
-    if (!w) return;
-    if (w.rain_in !== null && w.rain_in !== undefined) rains.push(w.rain_in);
-    if (w.temp_max_f !== null && w.temp_max_f !== undefined) temps.push(w.temp_max_f);
+  const rainSeries = [];
+  const tempSeries = [];
+  const statsLines = { rain: [], temp: [] };
+  selected.forEach(c => {
+    const rains = [], temps = [];
+    c.dates.forEach(d => {
+      const w = weatherData[d];
+      if (!w) return;
+      if (w.rain_in !== null && w.rain_in !== undefined) rains.push(w.rain_in);
+      if (w.temp_max_f !== null && w.temp_max_f !== undefined) temps.push(w.temp_max_f);
+    });
+    const color = clusterColor(c.id);
+    const label = `C${c.id}`;
+    rainSeries.push({ values: rains, color, label });
+    tempSeries.push({ values: temps, color, label });
+    const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+    const rainTotal = rains.reduce((s,x)=>s+x, 0);
+    const dry = rains.filter(r => r < 0.01).length;
+    statsLines.rain.push(
+      `<span style="color:${color}">■</span> C${c.id}: n=${rains.length}, total ${rainTotal.toFixed(1)}", avg ${mean(rains).toFixed(2)}"/day, dry ${dry}`
+    );
+    statsLines.temp.push(
+      temps.length
+        ? `<span style="color:${color}">■</span> C${c.id}: n=${temps.length}, avg ${mean(temps).toFixed(1)}°F, range ${Math.min(...temps).toFixed(0)}–${Math.max(...temps).toFixed(0)}°F`
+        : `<span style="color:${color}">■</span> C${c.id}: no data`
+    );
   });
 
   const rainBins = [0, 0.01, 0.1, 0.25, 0.5, 1, 2, 4];
   const tempBins = [];
   for (let t = 20; t <= 100; t += 10) tempBins.push(t);
 
-  renderHist('rain-hist', rains, rainBins, clusterColor(c.id), v => v === 0 ? '0' : v.toString());
-  renderHist('temp-hist', temps, tempBins, clusterColor(c.id), v => v.toString());
+  renderHist('rain-hist', rainSeries, rainBins, v => v === 0 ? '0' : v.toString());
+  renderHist('temp-hist', tempSeries, tempBins, v => v.toString());
 
-  const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
-  const rainTotal = rains.reduce((s,x)=>s+x, 0);
-  const dryDays = rains.filter(r => r < 0.01).length;
-  document.getElementById('rain-stats').textContent =
-    `n=${rains.length} • total ${rainTotal.toFixed(1)}" • avg ${mean(rains).toFixed(2)}"/day • dry days ${dryDays}`;
-  document.getElementById('temp-stats').textContent =
-    temps.length
-      ? `n=${temps.length} • avg ${mean(temps).toFixed(1)}°F • range ${Math.min(...temps).toFixed(0)}–${Math.max(...temps).toFixed(0)}°F`
-      : 'no data';
+  document.getElementById('rain-stats').innerHTML = statsLines.rain.join('<br>');
+  document.getElementById('temp-stats').innerHTML = statsLines.temp.join('<br>');
 }
 
 document.getElementById('k-slider').addEventListener('input', (e) => {
@@ -384,13 +418,13 @@ document.getElementById('k-slider').addEventListener('input', (e) => {
   document.getElementById('k-display').textContent = k;
 });
 document.getElementById('k-slider').addEventListener('change', (e) => {
-  highlightCluster = null;
+  highlightClusters = new Set();
   load(parseInt(e.target.value));
   renderWeather();
 });
 
 document.getElementById('station-select').addEventListener('change', () => {
-  highlightCluster = null;
+  highlightClusters = new Set();
   load(parseInt(document.getElementById('k-slider').value));
   renderWeather();
 });

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cluster & Calendar — Subway</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: #1a1a2e; color: #e0e0e0; min-height: 100vh; padding: 20px; }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .sub { font-size: 12px; color: #a0a0c0; margin-bottom: 16px; }
+  a { color: #00d2ff; }
+
+  #controls {
+    display: flex; align-items: center; gap: 20px;
+    padding: 12px 16px; background: #16213e; border: 1px solid #0f3460;
+    border-radius: 6px; margin-bottom: 16px;
+  }
+  #controls label { font-size: 13px; color: #a0a0c0; }
+  #controls input[type=range] { width: 240px; }
+  #k-display { font-size: 14px; font-weight: 600; color: #e94560; width: 30px; text-align: center; }
+
+  #main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .panel {
+    background: #16213e; border: 1px solid #0f3460; border-radius: 6px; padding: 16px;
+  }
+  .panel h2 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #a0a0c0; }
+
+  #calendar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .month { font-size: 11px; }
+  .month-name { font-weight: 600; margin-bottom: 4px; color: #cfcfe0; }
+  .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .weekday-label { text-align: center; font-size: 9px; color: #6a6a8a; padding: 1px 0; }
+  .day {
+    aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 9px; border-radius: 2px; cursor: pointer; background: #0f1626;
+    color: #555; transition: transform 0.1s;
+  }
+  .day.has-data { color: #fff; font-weight: 500; }
+  .day:hover { transform: scale(1.2); z-index: 10; box-shadow: 0 0 4px rgba(255,255,255,0.5); }
+  .day.highlighted { outline: 2px solid #fff; }
+
+  #chart { width: 100%; height: 420px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; font-size: 11px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 2px 6px; border-radius: 3px; }
+  .legend-item.dim { opacity: 0.3; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<h1>Cluster &amp; Calendar Visualization — Subway Ridership</h1>
+<div class="sub">Daily system-wide ridership patterns clustered via Ward's method. <a href="/">← Back to map</a></div>
+
+<div id="controls">
+  <label>Station:</label>
+  <select id="station-select" style="background:#1a1a2e;color:#e0e0e0;border:1px solid #0f3460;padding:4px 8px;border-radius:4px;min-width:260px;">
+    <option value="">System-wide (all stations)</option>
+  </select>
+  <label>Clusters:</label>
+  <input type="range" id="k-slider" min="2" max="12" value="5">
+  <span id="k-display">5</span>
+  <div style="margin-left:auto; font-size:12px; color:#a0a0c0;" id="status"></div>
+</div>
+
+<div id="main">
+  <div class="panel">
+    <h2>Calendar (click a day to highlight its cluster)</h2>
+    <div id="calendar"></div>
+  </div>
+  <div class="panel">
+    <h2>Average Hourly Pattern per Cluster</h2>
+    <svg id="chart"></svg>
+    <div class="legend" id="legend"></div>
+    <div id="weather-panel" style="display:none; margin-top:16px; padding-top:12px; border-top:1px solid #0f3460;">
+      <h2 style="font-size:13px; margin-bottom:8px;" id="weather-title">Weather — Cluster</h2>
+      <div style="display:flex; gap:20px;">
+        <div style="flex:1;">
+          <div style="font-size:11px; color:#a0a0c0; margin-bottom:4px;">Total daily rainfall (in)</div>
+          <svg id="rain-hist" width="100%" height="110"></svg>
+          <div id="rain-stats" style="font-size:11px; color:#a0a0c0; margin-top:2px;"></div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:11px; color:#a0a0c0; margin-bottom:4px;">Max temperature (°F)</div>
+          <svg id="temp-hist" width="100%" height="110"></svg>
+          <div id="temp-stats" style="font-size:11px; color:#a0a0c0; margin-top:2px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = ['#e94560','#00d2ff','#ffc857','#81ecec','#6c5ce7','#55efc4','#fd79a8','#fdcb6e','#74b9ff','#a29bfe','#ff7675','#55a3ff'];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const WEEKDAYS = ['M','T','W','T','F','S','S']; // Monday-first
+
+let currentData = null;
+let highlightCluster = null;
+let weatherData = null;
+
+async function loadWeather() {
+  const resp = await fetch('/api/weather');
+  weatherData = await resp.json();
+}
+
+async function loadStations() {
+  const resp = await fetch('/api/subway/stations');
+  const stations = await resp.json();
+  const sel = document.getElementById('station-select');
+  stations.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.station_id;
+    opt.textContent = s.station_name;
+    sel.appendChild(opt);
+  });
+}
+
+async function load(k) {
+  const stationId = document.getElementById('station-select').value;
+  const params = new URLSearchParams({ k });
+  if (stationId) {
+    params.set('station_id', stationId);
+  }
+  const resp = await fetch(`/api/subway/clustering?${params}`);
+  currentData = await resp.json();
+  const scope = stationId
+    ? document.getElementById('station-select').selectedOptions[0].textContent
+    : 'System-wide';
+  document.getElementById('status').textContent =
+    `${scope} • ${currentData.dates.length} sampled days • ${currentData.clusters.length} clusters`;
+  renderCalendar();
+  renderChart();
+  renderLegend();
+}
+
+function clusterColor(id) {
+  return COLORS[(id - 1) % COLORS.length];
+}
+
+function renderCalendar() {
+  const cal = document.getElementById('calendar');
+  cal.innerHTML = '';
+  const year = parseInt(currentData.dates[0].slice(0, 4));
+
+  for (let m = 0; m < 12; m++) {
+    const monthDiv = document.createElement('div');
+    monthDiv.className = 'month';
+    monthDiv.innerHTML = `<div class="month-name">${MONTH_NAMES[m]}</div>`;
+    const grid = document.createElement('div');
+    grid.className = 'month-grid';
+
+    WEEKDAYS.forEach(wd => {
+      const el = document.createElement('div');
+      el.className = 'weekday-label';
+      el.textContent = wd;
+      grid.appendChild(el);
+    });
+
+    const first = new Date(year, m, 1);
+    // Convert Sunday=0 to Monday=0 indexing
+    let firstDow = (first.getDay() + 6) % 7;
+    for (let i = 0; i < firstDow; i++) {
+      const blank = document.createElement('div');
+      grid.appendChild(blank);
+    }
+    const daysInMonth = new Date(year, m + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(m + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const clusterId = currentData.date_to_cluster[dateStr];
+      const cell = document.createElement('div');
+      cell.className = 'day';
+      cell.textContent = d;
+      if (clusterId !== undefined) {
+        cell.classList.add('has-data');
+        cell.style.background = clusterColor(clusterId);
+        cell.dataset.cluster = clusterId;
+        cell.dataset.date = dateStr;
+        if (highlightCluster !== null && clusterId === highlightCluster) {
+          cell.classList.add('highlighted');
+        } else if (highlightCluster !== null) {
+          cell.style.opacity = '0.25';
+        }
+        cell.title = `${dateStr} — Cluster ${clusterId}`;
+        cell.addEventListener('click', () => {
+          highlightCluster = highlightCluster === clusterId ? null : clusterId;
+          renderCalendar();
+          renderChart();
+          renderLegend();
+        });
+      }
+      grid.appendChild(cell);
+    }
+    monthDiv.appendChild(grid);
+    cal.appendChild(monthDiv);
+  }
+}
+
+function renderChart() {
+  const svg = document.getElementById('chart');
+  svg.innerHTML = '';
+  const w = svg.clientWidth;
+  const h = 420;
+  const margin = { top: 10, right: 10, bottom: 40, left: 60 };
+  const plotW = w - margin.left - margin.right;
+  const plotH = h - margin.top - margin.bottom;
+
+  const clusters = currentData.clusters;
+  const maxY = Math.max(...clusters.flatMap(c => c.mean_pattern));
+
+  const xScale = i => margin.left + (i / 23) * plotW;
+  const yScale = v => margin.top + plotH - (v / maxY) * plotH;
+
+  const ns = 'http://www.w3.org/2000/svg';
+
+  // Grid + axes
+  for (let i = 0; i <= 5; i++) {
+    const y = margin.top + (i / 5) * plotH;
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', margin.left); line.setAttribute('x2', margin.left + plotW);
+    line.setAttribute('y1', y); line.setAttribute('y2', y);
+    line.setAttribute('stroke', '#2a3a5c'); line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+    const label = document.createElementNS(ns, 'text');
+    label.setAttribute('x', margin.left - 6); label.setAttribute('y', y + 3);
+    label.setAttribute('text-anchor', 'end');
+    label.setAttribute('fill', '#6a6a8a'); label.setAttribute('font-size', '10');
+    label.textContent = Math.round(maxY * (1 - i / 5)).toLocaleString();
+    svg.appendChild(label);
+  }
+
+  for (let hr = 0; hr <= 24; hr += 3) {
+    const x = xScale(hr);
+    const label = document.createElementNS(ns, 'text');
+    label.setAttribute('x', x); label.setAttribute('y', h - margin.bottom + 15);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('fill', '#6a6a8a'); label.setAttribute('font-size', '10');
+    label.textContent = `${hr}:00`;
+    svg.appendChild(label);
+  }
+
+  // Y axis label
+  const ylab = document.createElementNS(ns, 'text');
+  ylab.setAttribute('x', -(margin.top + plotH / 2)); ylab.setAttribute('y', 14);
+  ylab.setAttribute('transform', 'rotate(-90)');
+  ylab.setAttribute('text-anchor', 'middle');
+  ylab.setAttribute('fill', '#a0a0c0'); ylab.setAttribute('font-size', '11');
+  ylab.textContent = 'Ridership (system-wide, per hour)';
+  svg.appendChild(ylab);
+
+  clusters.forEach(c => {
+    const path = document.createElementNS(ns, 'path');
+    const d = c.mean_pattern.map((v, i) => `${i === 0 ? 'M' : 'L'}${xScale(i)},${yScale(v)}`).join(' ');
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', clusterColor(c.id));
+    const emph = highlightCluster === null || highlightCluster === c.id;
+    path.setAttribute('stroke-width', emph ? '2.5' : '1');
+    path.setAttribute('opacity', emph ? '1' : '0.2');
+    svg.appendChild(path);
+  });
+}
+
+function renderLegend() {
+  const lg = document.getElementById('legend');
+  lg.innerHTML = '';
+  currentData.clusters.forEach(c => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    if (highlightCluster !== null && highlightCluster !== c.id) item.classList.add('dim');
+    item.innerHTML = `<div class="legend-swatch" style="background:${clusterColor(c.id)}"></div>Cluster ${c.id} (${c.size} day${c.size !== 1 ? 's' : ''})`;
+    item.addEventListener('click', () => {
+      highlightCluster = highlightCluster === c.id ? null : c.id;
+      renderCalendar();
+      renderChart();
+      renderLegend();
+      renderWeather();
+    });
+    lg.appendChild(item);
+  });
+}
+
+function renderHist(svgId, values, binEdges, color, fmt) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  const w = svg.clientWidth || 300;
+  const h = 110;
+  const padL = 28, padR = 6, padT = 6, padB = 22;
+  const counts = new Array(binEdges.length - 1).fill(0);
+  values.forEach(v => {
+    for (let i = 0; i < counts.length; i++) {
+      if (v >= binEdges[i] && (i === counts.length - 1 ? v <= binEdges[i+1] : v < binEdges[i+1])) {
+        counts[i]++;
+        break;
+      }
+    }
+  });
+  const maxC = Math.max(1, ...counts);
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+  const barW = plotW / counts.length;
+  const ns = 'http://www.w3.org/2000/svg';
+  counts.forEach((c, i) => {
+    const bh = (c / maxC) * plotH;
+    const r = document.createElementNS(ns, 'rect');
+    r.setAttribute('x', padL + i * barW + 1);
+    r.setAttribute('y', padT + plotH - bh);
+    r.setAttribute('width', Math.max(1, barW - 2));
+    r.setAttribute('height', bh);
+    r.setAttribute('fill', color);
+    svg.appendChild(r);
+  });
+  // x-axis tick labels at every bin edge (skip some if many)
+  const step = counts.length > 8 ? 2 : 1;
+  for (let i = 0; i < binEdges.length; i += step) {
+    const t = document.createElementNS(ns, 'text');
+    t.setAttribute('x', padL + i * barW);
+    t.setAttribute('y', h - 8);
+    t.setAttribute('fill', '#a0a0c0');
+    t.setAttribute('font-size', '9');
+    t.setAttribute('text-anchor', 'middle');
+    t.textContent = fmt(binEdges[i]);
+    svg.appendChild(t);
+  }
+  // y-axis max
+  const yt = document.createElementNS(ns, 'text');
+  yt.setAttribute('x', padL - 4);
+  yt.setAttribute('y', padT + 8);
+  yt.setAttribute('fill', '#a0a0c0');
+  yt.setAttribute('font-size', '9');
+  yt.setAttribute('text-anchor', 'end');
+  yt.textContent = maxC;
+  svg.appendChild(yt);
+  const yb = document.createElementNS(ns, 'text');
+  yb.setAttribute('x', padL - 4);
+  yb.setAttribute('y', padT + plotH);
+  yb.setAttribute('fill', '#a0a0c0');
+  yb.setAttribute('font-size', '9');
+  yb.setAttribute('text-anchor', 'end');
+  yb.textContent = '0';
+  svg.appendChild(yb);
+}
+
+function renderWeather() {
+  const panel = document.getElementById('weather-panel');
+  if (highlightCluster === null || !weatherData) {
+    panel.style.display = 'none';
+    return;
+  }
+  const c = currentData.clusters.find(x => x.id === highlightCluster);
+  if (!c) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  document.getElementById('weather-title').textContent = `Weather — Cluster ${c.id} (${c.size} days)`;
+
+  const rains = [];
+  const temps = [];
+  c.dates.forEach(d => {
+    const w = weatherData[d];
+    if (!w) return;
+    if (w.rain_in !== null && w.rain_in !== undefined) rains.push(w.rain_in);
+    if (w.temp_max_f !== null && w.temp_max_f !== undefined) temps.push(w.temp_max_f);
+  });
+
+  const rainBins = [0, 0.01, 0.1, 0.25, 0.5, 1, 2, 4];
+  const tempBins = [];
+  for (let t = 20; t <= 100; t += 10) tempBins.push(t);
+
+  renderHist('rain-hist', rains, rainBins, clusterColor(c.id), v => v === 0 ? '0' : v.toString());
+  renderHist('temp-hist', temps, tempBins, clusterColor(c.id), v => v.toString());
+
+  const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+  const rainTotal = rains.reduce((s,x)=>s+x, 0);
+  const dryDays = rains.filter(r => r < 0.01).length;
+  document.getElementById('rain-stats').textContent =
+    `n=${rains.length} • total ${rainTotal.toFixed(1)}" • avg ${mean(rains).toFixed(2)}"/day • dry days ${dryDays}`;
+  document.getElementById('temp-stats').textContent =
+    temps.length
+      ? `n=${temps.length} • avg ${mean(temps).toFixed(1)}°F • range ${Math.min(...temps).toFixed(0)}–${Math.max(...temps).toFixed(0)}°F`
+      : 'no data';
+}
+
+document.getElementById('k-slider').addEventListener('input', (e) => {
+  const k = parseInt(e.target.value);
+  document.getElementById('k-display').textContent = k;
+});
+document.getElementById('k-slider').addEventListener('change', (e) => {
+  highlightCluster = null;
+  load(parseInt(e.target.value));
+  renderWeather();
+});
+
+document.getElementById('station-select').addEventListener('change', () => {
+  highlightCluster = null;
+  load(parseInt(document.getElementById('k-slider').value));
+  renderWeather();
+});
+
+loadWeather();
+loadStations().then(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const stationId = urlParams.get('station_id');
+  if (stationId) {
+    document.getElementById('station-select').value = stationId;
+  }
+  load(5);
+});
+</script>
+</body>
+</html>

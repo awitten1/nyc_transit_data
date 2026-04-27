@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Cluster & Calendar — Subway</title>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -45,9 +46,29 @@
   .legend-item { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 2px 6px; border-radius: 3px; }
   .legend-item.dim { opacity: 0.3; }
   .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+  .axis path, .axis line { stroke: #2a3a5c; }
+  .axis text { fill: #a0a0c0; font-size: 10px; }
+  .grid line { stroke: #2a3a5c; stroke-dasharray: 2,2; }
+  .grid path { stroke: none; }
+  #tooltip {
+    position: absolute; pointer-events: none; z-index: 1000;
+    background: rgba(15, 22, 38, 0.96); color: #e0e0e0;
+    border: 1px solid #0f3460; border-radius: 4px;
+    padding: 6px 10px; font-size: 11px; line-height: 1.45;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    opacity: 0; transition: opacity 0.1s;
+    white-space: nowrap;
+  }
+  #tooltip.show { opacity: 1; }
+  .wv-btn {
+    background: #1a1a2e; border: 1px solid #0f3460; color: #a0a0c0;
+    font-size: 11px; padding: 3px 10px; border-radius: 3px; cursor: pointer;
+  }
+  .wv-btn.active { background: #0f3460; color: #fff; }
 </style>
 </head>
 <body>
+<div id="tooltip"></div>
 
 <h1>Cluster &amp; Calendar Visualization — Subway Ridership</h1>
 <div class="sub">Daily system-wide ridership patterns clustered via Ward's method. <a href="/">← Back to map</a></div>
@@ -72,18 +93,29 @@
     <h2>Average Hourly Pattern per Cluster</h2>
     <svg id="chart"></svg>
     <div class="legend" id="legend"></div>
-    <div id="weather-panel" style="display:none; margin-top:16px; padding-top:12px; border-top:1px solid #0f3460;">
-      <h2 style="font-size:13px; margin-bottom:8px;" id="weather-title">Weather — Cluster</h2>
-      <div style="display:flex; gap:20px;">
-        <div style="flex:1;">
-          <div style="font-size:11px; color:#a0a0c0; margin-bottom:4px;">Total daily rainfall (in)</div>
-          <svg id="rain-hist" width="100%" height="110"></svg>
-          <div id="rain-stats" style="font-size:11px; color:#a0a0c0; margin-top:2px;"></div>
+    <div id="weather-panel" style="margin-top:16px; padding-top:12px; border-top:1px solid #0f3460;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:13px; margin:0;" id="weather-title">Weather</h2>
+        <div id="weather-view-toggle" style="display:none; gap:4px;">
+          <button class="wv-btn active" id="wv-hist" onclick="setWeatherView('hist')">Histogram</button>
+          <button class="wv-btn" id="wv-scatter" onclick="setWeatherView('scatter')">Scatter</button>
         </div>
-        <div style="flex:1;">
-          <div style="font-size:11px; color:#a0a0c0; margin-bottom:4px;">Max temperature (°F)</div>
-          <svg id="temp-hist" width="100%" height="110"></svg>
-          <div id="temp-stats" style="font-size:11px; color:#a0a0c0; margin-top:2px;"></div>
+      </div>
+      <div id="weather-placeholder" style="font-size:12px; color:#6a6a8a; padding:8px 0;">
+        Click a cluster in the legend above to compare weather distributions.
+      </div>
+      <div id="weather-charts" style="display:none;">
+        <div style="display:flex; gap:20px;">
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#a0a0c0; margin-bottom:4px;" id="left-chart-label">Total daily rainfall (in)</div>
+            <svg id="left-chart" width="100%" height="150"></svg>
+            <div id="rain-stats" style="font-size:11px; color:#a0a0c0; margin-top:2px;"></div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#a0a0c0; margin-bottom:4px;" id="right-chart-label">Max temperature (°F)</div>
+            <svg id="right-chart" width="100%" height="150"></svg>
+            <div id="temp-stats" style="font-size:11px; color:#a0a0c0; margin-top:2px;"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -99,9 +131,37 @@ let currentData = null;
 let highlightClusters = new Set();
 let weatherData = null;
 
+const tip = {
+  el: null,
+  show(html, ev) {
+    if (!this.el) this.el = document.getElementById('tooltip');
+    this.el.innerHTML = html;
+    this.el.classList.add('show');
+    this.move(ev);
+  },
+  move(ev) {
+    if (!this.el) return;
+    const pad = 12;
+    let x = ev.clientX + pad + window.scrollX;
+    let y = ev.clientY + pad + window.scrollY;
+    const r = this.el.getBoundingClientRect();
+    if (x + r.width > window.innerWidth + window.scrollX) x = ev.clientX - r.width - pad + window.scrollX;
+    if (y + r.height > window.innerHeight + window.scrollY) y = ev.clientY - r.height - pad + window.scrollY;
+    this.el.style.left = x + 'px';
+    this.el.style.top = y + 'px';
+  },
+  hide() {
+    if (this.el) this.el.classList.remove('show');
+  }
+};
+const swatch = c => `<span style="display:inline-block;width:9px;height:9px;background:${c};border-radius:2px;margin-right:5px;"></span>`;
+let weatherView = 'hist'; // 'hist' | 'scatter'
+
 async function loadWeather() {
   const resp = await fetch('/api/weather');
   weatherData = await resp.json();
+  const keys = Object.keys(weatherData);
+  console.log(`[weather] loaded ${keys.length} dates`, keys.slice(0, 3), weatherData[keys[0]]);
 }
 
 async function loadStations() {
@@ -193,68 +253,81 @@ function renderCalendar() {
 }
 
 function renderChart() {
-  const svg = document.getElementById('chart');
-  svg.innerHTML = '';
-  const w = svg.clientWidth;
+  const svg = d3.select('#chart');
+  svg.selectAll('*').remove();
+  const w = svg.node().clientWidth;
   const h = 420;
-  const margin = { top: 10, right: 10, bottom: 40, left: 60 };
+  const margin = { top: 10, right: 10, bottom: 40, left: 64 };
   const plotW = w - margin.left - margin.right;
   const plotH = h - margin.top - margin.bottom;
 
   const clusters = currentData.clusters;
-  const maxY = Math.max(...clusters.flatMap(c => c.mean_pattern));
+  const maxY = d3.max(clusters.flatMap(c => c.mean_pattern)) || 1;
 
-  const xScale = i => margin.left + (i / 23) * plotW;
-  const yScale = v => margin.top + plotH - (v / maxY) * plotH;
+  const x = d3.scaleLinear().domain([0, 23]).range([0, plotW]);
+  const y = d3.scaleLinear().domain([0, maxY]).nice().range([plotH, 0]);
 
-  const ns = 'http://www.w3.org/2000/svg';
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
-  // Grid + axes
-  for (let i = 0; i <= 5; i++) {
-    const y = margin.top + (i / 5) * plotH;
-    const line = document.createElementNS(ns, 'line');
-    line.setAttribute('x1', margin.left); line.setAttribute('x2', margin.left + plotW);
-    line.setAttribute('y1', y); line.setAttribute('y2', y);
-    line.setAttribute('stroke', '#2a3a5c'); line.setAttribute('stroke-width', '1');
-    svg.appendChild(line);
-    const label = document.createElementNS(ns, 'text');
-    label.setAttribute('x', margin.left - 6); label.setAttribute('y', y + 3);
-    label.setAttribute('text-anchor', 'end');
-    label.setAttribute('fill', '#6a6a8a'); label.setAttribute('font-size', '10');
-    label.textContent = Math.round(maxY * (1 - i / 5)).toLocaleString();
-    svg.appendChild(label);
-  }
+  g.append('g').attr('class', 'grid')
+    .call(d3.axisLeft(y).ticks(6).tickSize(-plotW).tickFormat(''));
 
-  for (let hr = 0; hr <= 24; hr += 3) {
-    const x = xScale(hr);
-    const label = document.createElementNS(ns, 'text');
-    label.setAttribute('x', x); label.setAttribute('y', h - margin.bottom + 15);
-    label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('fill', '#6a6a8a'); label.setAttribute('font-size', '10');
-    label.textContent = `${hr}:00`;
-    svg.appendChild(label);
-  }
+  g.append('g').attr('class', 'axis')
+    .attr('transform', `translate(0,${plotH})`)
+    .call(d3.axisBottom(x).ticks(8).tickFormat(d => `${d}:00`));
 
-  // Y axis label
-  const ylab = document.createElementNS(ns, 'text');
-  ylab.setAttribute('x', -(margin.top + plotH / 2)); ylab.setAttribute('y', 14);
-  ylab.setAttribute('transform', 'rotate(-90)');
-  ylab.setAttribute('text-anchor', 'middle');
-  ylab.setAttribute('fill', '#a0a0c0'); ylab.setAttribute('font-size', '11');
-  ylab.textContent = 'Ridership (system-wide, per hour)';
-  svg.appendChild(ylab);
+  g.append('g').attr('class', 'axis')
+    .call(d3.axisLeft(y).ticks(6).tickFormat(d3.format('~s')));
 
+  svg.append('text')
+    .attr('transform', `translate(14,${margin.top + plotH / 2}) rotate(-90)`)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#a0a0c0').attr('font-size', '11')
+    .text('Ridership (per hour)');
+
+  const line = d3.line().x((_, i) => x(i)).y(d => y(d));
   clusters.forEach(c => {
-    const path = document.createElementNS(ns, 'path');
-    const d = c.mean_pattern.map((v, i) => `${i === 0 ? 'M' : 'L'}${xScale(i)},${yScale(v)}`).join(' ');
-    path.setAttribute('d', d);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', clusterColor(c.id));
     const emph = highlightClusters.size === 0 || highlightClusters.has(c.id);
-    path.setAttribute('stroke-width', emph ? '2.5' : '1');
-    path.setAttribute('opacity', emph ? '1' : '0.2');
-    svg.appendChild(path);
+    g.append('path')
+      .datum(c.mean_pattern)
+      .attr('d', line)
+      .attr('fill', 'none')
+      .attr('stroke', clusterColor(c.id))
+      .attr('stroke-width', emph ? 2.5 : 1)
+      .attr('opacity', emph ? 1 : 0.2);
   });
+
+  const guide = g.append('line')
+    .attr('y1', 0).attr('y2', plotH)
+    .attr('stroke', '#fff').attr('stroke-width', 1)
+    .attr('opacity', 0).attr('pointer-events', 'none');
+  const dots = g.append('g').attr('pointer-events', 'none');
+  g.append('rect')
+    .attr('x', 0).attr('y', 0)
+    .attr('width', plotW).attr('height', plotH)
+    .attr('fill', 'transparent')
+    .on('mousemove', function(ev) {
+      const [mx] = d3.pointer(ev, this);
+      const hr = Math.max(0, Math.min(23, Math.round(x.invert(mx))));
+      guide.attr('opacity', 0.5).attr('x1', x(hr)).attr('x2', x(hr));
+      dots.selectAll('circle').remove();
+      const sorted = [...clusters].sort((a, b) => b.mean_pattern[hr] - a.mean_pattern[hr]);
+      sorted.forEach(c => {
+        dots.append('circle')
+          .attr('cx', x(hr)).attr('cy', y(c.mean_pattern[hr]))
+          .attr('r', 4).attr('fill', clusterColor(c.id))
+          .attr('stroke', '#fff').attr('stroke-width', 1);
+      });
+      const rows = sorted.map(c =>
+        `${swatch(clusterColor(c.id))}Cluster ${c.id}: <b>${d3.format(',.0f')(c.mean_pattern[hr])}</b>`
+      ).join('<br>');
+      tip.show(`<b>${hr}:00</b><br>${rows}`, ev);
+    })
+    .on('mouseleave', () => {
+      guide.attr('opacity', 0);
+      dots.selectAll('circle').remove();
+      tip.hide();
+    });
 }
 
 function renderLegend() {
@@ -275,6 +348,7 @@ function renderLegend() {
 function toggleCluster(id) {
   if (highlightClusters.has(id)) highlightClusters.delete(id);
   else highlightClusters.add(id);
+  console.log(`[toggleCluster] id=${id} highlightClusters=`, [...highlightClusters]);
   renderCalendar();
   renderChart();
   renderLegend();
@@ -294,123 +368,270 @@ function binValues(values, binEdges) {
   return counts;
 }
 
-function renderHist(svgId, series, binEdges, fmt) {
+function renderHist(svgId, series, binEdges, tickFmt) {
   // series: [{values, color, label}]
-  const svg = document.getElementById(svgId);
-  svg.innerHTML = '';
-  const w = svg.clientWidth || 300;
-  const h = 110;
-  const padL = 32, padR = 6, padT = 6, padB = 22;
-  const ns = 'http://www.w3.org/2000/svg';
+  const svg = d3.select('#' + svgId);
+  svg.selectAll('*').remove();
+  const w = svg.node().clientWidth || 300;
+  const h = 130;
+  svg.attr('height', h);
+  const margin = { top: 8, right: 8, bottom: 24, left: 38 };
+  const plotW = w - margin.left - margin.right;
+  const plotH = h - margin.top - margin.bottom;
   const nBins = binEdges.length - 1;
-  const nSeries = series.length;
-  if (nSeries === 0) return;
+  if (series.length === 0) return;
 
   const seriesCounts = series.map(s => binValues(s.values, binEdges));
   const seriesProps = series.map((s, si) =>
     seriesCounts[si].map(c => s.values.length ? c / s.values.length : 0)
   );
-  const maxP = Math.max(0.0001, ...seriesProps.flat());
-  const plotW = w - padL - padR;
-  const plotH = h - padT - padB;
-  const groupW = plotW / nBins;
-  const barW = Math.max(1, (groupW - 2) / nSeries);
+  const maxP = Math.max(0.0001, d3.max(seriesProps.flat()));
+
+  const x0 = d3.scaleBand()
+    .domain(d3.range(nBins))
+    .range([0, plotW])
+    .padding(0.15);
+  const x1 = d3.scaleBand()
+    .domain(d3.range(series.length))
+    .range([0, x0.bandwidth()])
+    .padding(0.05);
+  const y = d3.scaleLinear().domain([0, maxP]).nice().range([plotH, 0]);
+
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  g.append('g').attr('class', 'grid')
+    .call(d3.axisLeft(y).ticks(4).tickSize(-plotW).tickFormat(''));
+
+  g.append('g').attr('class', 'axis')
+    .attr('transform', `translate(0,${plotH})`)
+    .call(
+      d3.axisBottom(x0)
+        .tickFormat(i => tickFmt(binEdges[i], binEdges[i+1]))
+    );
+
+  g.append('g').attr('class', 'axis')
+    .call(d3.axisLeft(y).ticks(4).tickFormat(d3.format('.0%')));
 
   for (let i = 0; i < nBins; i++) {
-    for (let si = 0; si < nSeries; si++) {
+    for (let si = 0; si < series.length; si++) {
       const p = seriesProps[si][i];
-      const bh = (p / maxP) * plotH;
-      const r = document.createElementNS(ns, 'rect');
-      r.setAttribute('x', padL + i * groupW + 1 + si * barW);
-      r.setAttribute('y', padT + plotH - bh);
-      r.setAttribute('width', barW);
-      r.setAttribute('height', bh);
-      r.setAttribute('fill', series[si].color);
-      r.setAttribute('opacity', '0.85');
-      const title = document.createElementNS(ns, 'title');
-      title.textContent = `${series[si].label}: ${(p*100).toFixed(0)}% (${seriesCounts[si][i]} days)`;
-      r.appendChild(title);
-      svg.appendChild(r);
+      const binLabel = `${binEdges[i]}–${binEdges[i+1]}`;
+      const seriesRef = series[si];
+      const countRef = seriesCounts[si][i];
+      const totalRef = seriesRef.values.length;
+      g.append('rect')
+        .attr('x', x0(i) + x1(si))
+        .attr('y', y(p))
+        .attr('width', x1.bandwidth())
+        .attr('height', plotH - y(p))
+        .attr('fill', seriesRef.color)
+        .attr('opacity', 0.85)
+        .style('cursor', 'pointer')
+        .on('mouseover', (ev) => {
+          d3.select(ev.currentTarget).attr('opacity', 1);
+          tip.show(
+            `${swatch(seriesRef.color)}<b>${seriesRef.label}</b><br>` +
+            `Bin: ${binLabel}<br>` +
+            `Days: <b>${countRef}</b> / ${totalRef}<br>` +
+            `Share: <b>${(p*100).toFixed(1)}%</b>`,
+            ev
+          );
+        })
+        .on('mousemove', (ev) => tip.move(ev))
+        .on('mouseleave', (ev) => {
+          d3.select(ev.currentTarget).attr('opacity', 0.85);
+          tip.hide();
+        });
     }
   }
-  const step = nBins > 8 ? 2 : 1;
-  for (let i = 0; i < binEdges.length; i += step) {
-    const t = document.createElementNS(ns, 'text');
-    t.setAttribute('x', padL + i * groupW);
-    t.setAttribute('y', h - 8);
-    t.setAttribute('fill', '#a0a0c0');
-    t.setAttribute('font-size', '9');
-    t.setAttribute('text-anchor', 'middle');
-    t.textContent = fmt(binEdges[i]);
-    svg.appendChild(t);
+}
+
+function setWeatherView(v) {
+  weatherView = v;
+  document.getElementById('wv-hist').classList.toggle('active', v === 'hist');
+  document.getElementById('wv-scatter').classList.toggle('active', v === 'scatter');
+  renderWeather();
+}
+
+function renderScatterPlot(svgId, points, xLabel) {
+  // points: [{x, y, color, label, date}]
+  const svg = d3.select('#' + svgId);
+  svg.selectAll('*').remove();
+  const w = svg.node().clientWidth || 300;
+  const h = parseInt(svg.attr('height')) || 160;
+  const margin = { top: 10, right: 12, bottom: 36, left: 52 };
+  const plotW = w - margin.left - margin.right;
+  const plotH = h - margin.top - margin.bottom;
+  if (points.length === 0) return;
+
+  const xExt = d3.extent(points, p => p.x);
+  const yExt = d3.extent(points, p => p.y);
+  const xPad = (xExt[1] - xExt[0]) * 0.05 || 0.5;
+  const yPad = (yExt[1] - yExt[0]) * 0.05 || 1;
+
+  const x = d3.scaleLinear()
+    .domain([xExt[0] - xPad, xExt[1] + xPad])
+    .nice()
+    .range([0, plotW]);
+  const y = d3.scaleLinear()
+    .domain([yExt[0] - yPad, yExt[1] + yPad])
+    .nice()
+    .range([plotH, 0]);
+
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  g.append('g').attr('class', 'grid')
+    .call(d3.axisLeft(y).ticks(5).tickSize(-plotW).tickFormat(''));
+
+  g.append('g').attr('class', 'axis')
+    .attr('transform', `translate(0,${plotH})`)
+    .call(d3.axisBottom(x).ticks(6).tickFormat(d3.format('~g')));
+
+  g.append('g').attr('class', 'axis')
+    .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format('~s')));
+
+  svg.append('text')
+    .attr('x', margin.left + plotW / 2).attr('y', h - 4)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#a0a0c0').attr('font-size', '10')
+    .text(xLabel);
+  svg.append('text')
+    .attr('transform', `translate(12,${margin.top + plotH / 2}) rotate(-90)`)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#a0a0c0').attr('font-size', '10')
+    .text('Daily ridership');
+
+  function drawOLS(pts, stroke, strokeWidth, dasharray) {
+    const n = pts.length;
+    if (n < 2) return;
+    const mx = d3.mean(pts, p => p.x);
+    const my = d3.mean(pts, p => p.y);
+    const ss = d3.sum(pts, p => (p.x - mx) ** 2);
+    const sp = d3.sum(pts, p => (p.x - mx) * (p.y - my));
+    if (ss === 0) return;
+    const slope = sp / ss, intercept = my - slope * mx;
+    const [x0, x1] = x.domain();
+    g.append('line')
+      .attr('x1', x(x0)).attr('y1', y(slope * x0 + intercept))
+      .attr('x2', x(x1)).attr('y2', y(slope * x1 + intercept))
+      .attr('stroke', stroke).attr('stroke-width', strokeWidth)
+      .attr('stroke-dasharray', dasharray).attr('opacity', 0.85);
   }
-  const yt = document.createElementNS(ns, 'text');
-  yt.setAttribute('x', padL - 4);
-  yt.setAttribute('y', padT + 8);
-  yt.setAttribute('fill', '#a0a0c0');
-  yt.setAttribute('font-size', '9');
-  yt.setAttribute('text-anchor', 'end');
-  yt.textContent = `${(maxP*100).toFixed(0)}%`;
-  svg.appendChild(yt);
-  const yb = document.createElementNS(ns, 'text');
-  yb.setAttribute('x', padL - 4);
-  yb.setAttribute('y', padT + plotH);
-  yb.setAttribute('fill', '#a0a0c0');
-  yb.setAttribute('font-size', '9');
-  yb.setAttribute('text-anchor', 'end');
-  yb.textContent = '0';
-  svg.appendChild(yb);
+
+  const byCluster = d3.group(points, p => p.label);
+  byCluster.forEach((pts) => drawOLS(pts, pts[0].color, 1.5, 'none'));
+  drawOLS(points, '#ffffff', 1, '5,3');
+
+  g.selectAll('circle').data(points).enter().append('circle')
+    .attr('cx', p => x(p.x)).attr('cy', p => y(p.y))
+    .attr('r', 4).attr('fill', p => p.color).attr('opacity', 0.75)
+    .style('cursor', 'pointer')
+    .on('mouseover', function(ev, p) {
+      d3.select(this).attr('r', 6).attr('opacity', 1).attr('stroke', '#fff').attr('stroke-width', 1);
+      tip.show(
+        `${swatch(p.color)}<b>${p.label}</b><br>` +
+        `${p.date}<br>` +
+        `${xLabel}: <b>${p.x.toFixed(2)}</b><br>` +
+        `Ridership: <b>${d3.format(',.0f')(p.y)}</b>`,
+        ev
+      );
+    })
+    .on('mousemove', (ev) => tip.move(ev))
+    .on('mouseleave', function() {
+      d3.select(this).attr('r', 4).attr('opacity', 0.75).attr('stroke', null);
+      tip.hide();
+    });
 }
 
 function renderWeather() {
-  const panel = document.getElementById('weather-panel');
-  if (highlightClusters.size === 0 || !weatherData) {
-    panel.style.display = 'none';
+  const placeholder = document.getElementById('weather-placeholder');
+  const charts = document.getElementById('weather-charts');
+  const title = document.getElementById('weather-title');
+  const toggle = document.getElementById('weather-view-toggle');
+
+  if (highlightClusters.size === 0) {
+    placeholder.style.display = '';
+    charts.style.display = 'none';
+    toggle.style.display = 'none';
+    title.textContent = 'Weather';
     return;
   }
   const selected = currentData.clusters.filter(c => highlightClusters.has(c.id));
-  if (selected.length === 0) { panel.style.display = 'none'; return; }
-  panel.style.display = '';
-  document.getElementById('weather-title').textContent =
-    `Weather — ${selected.map(c => `Cluster ${c.id}`).join(', ')}`;
+  if (selected.length === 0) {
+    placeholder.style.display = '';
+    charts.style.display = 'none';
+    toggle.style.display = 'none';
+    return;
+  }
+  placeholder.style.display = 'none';
+  charts.style.display = '';
+  toggle.style.display = 'flex';
+  title.textContent = `Weather — ${selected.map(c => `Cluster ${c.id}`).join(', ')}`;
 
-  const rainSeries = [];
-  const tempSeries = [];
+  if (!weatherData) {
+    charts.innerHTML = '<div style="font-size:12px;color:#6a6a8a;padding:8px 0;">Weather data still loading…</div>';
+    return;
+  }
+
+  // Collect per-date data for each selected cluster
+  const rainSeries = [], tempSeries = [];
+  const rainPoints = [], tempPoints = [];  // for scatter
   const statsLines = { rain: [], temp: [] };
+  const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+
   selected.forEach(c => {
     const rains = [], temps = [];
     c.dates.forEach(d => {
       const w = weatherData[d];
       if (!w) return;
-      if (w.rain_in !== null && w.rain_in !== undefined) rains.push(w.rain_in);
-      if (w.temp_max_f !== null && w.temp_max_f !== undefined) temps.push(w.temp_max_f);
+      const ridership = currentData.date_totals?.[d];
+      const color = clusterColor(c.id);
+      if (w.rain_in !== null && w.rain_in !== undefined) {
+        rains.push(w.rain_in);
+        if (ridership !== undefined) rainPoints.push({ x: w.rain_in, y: ridership, color, label: `C${c.id}`, date: d });
+      }
+      if (w.temp_max_f !== null && w.temp_max_f !== undefined) {
+        temps.push(w.temp_max_f);
+        if (ridership !== undefined) tempPoints.push({ x: w.temp_max_f, y: ridership, color, label: `C${c.id}`, date: d });
+      }
     });
     const color = clusterColor(c.id);
-    const label = `C${c.id}`;
-    rainSeries.push({ values: rains, color, label });
-    tempSeries.push({ values: temps, color, label });
-    const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+    rainSeries.push({ values: rains, color, label: `C${c.id}` });
+    tempSeries.push({ values: temps, color, label: `C${c.id}` });
     const rainTotal = rains.reduce((s,x)=>s+x, 0);
     const dry = rains.filter(r => r < 0.01).length;
-    statsLines.rain.push(
-      `<span style="color:${color}">■</span> C${c.id}: n=${rains.length}, total ${rainTotal.toFixed(1)}", avg ${mean(rains).toFixed(2)}"/day, dry ${dry}`
-    );
+    statsLines.rain.push(`<span style="color:${color}">■</span> C${c.id}: n=${rains.length}, avg ${mean(rains).toFixed(2)}"/day, dry ${dry}`);
     statsLines.temp.push(
       temps.length
-        ? `<span style="color:${color}">■</span> C${c.id}: n=${temps.length}, avg ${mean(temps).toFixed(1)}°F, range ${Math.min(...temps).toFixed(0)}–${Math.max(...temps).toFixed(0)}°F`
+        ? `<span style="color:${color}">■</span> C${c.id}: avg ${mean(temps).toFixed(1)}°F, range ${Math.min(...temps).toFixed(0)}–${Math.max(...temps).toFixed(0)}°F`
         : `<span style="color:${color}">■</span> C${c.id}: no data`
     );
   });
 
-  const rainBins = [0, 0.01, 0.1, 0.25, 0.5, 1, 2, 4];
-  const tempBins = [];
-  for (let t = 20; t <= 100; t += 10) tempBins.push(t);
-
-  renderHist('rain-hist', rainSeries, rainBins, v => v === 0 ? '0' : v.toString());
-  renderHist('temp-hist', tempSeries, tempBins, v => v.toString());
-
-  document.getElementById('rain-stats').innerHTML = statsLines.rain.join('<br>');
-  document.getElementById('temp-stats').innerHTML = statsLines.temp.join('<br>');
+  requestAnimationFrame(() => {
+    if (weatherView === 'scatter') {
+      document.getElementById('left-chart-label').textContent = 'Rainfall (in) vs. Daily Ridership';
+      document.getElementById('right-chart-label').textContent = 'Max Temp (°F) vs. Daily Ridership';
+      renderScatterPlot('left-chart', rainPoints, 'Rainfall (in)');
+      renderScatterPlot('right-chart', tempPoints, 'Max temp (°F)');
+    } else {
+      document.getElementById('left-chart-label').textContent = 'Total daily rainfall (in)';
+      document.getElementById('right-chart-label').textContent = 'Max temperature (°F)';
+      const rainBins = [0, 0.01, 0.1, 0.25, 0.5, 1, 2, 4];
+      const tempBins = [];
+      for (let t = 20; t <= 100; t += 10) tempBins.push(t);
+      const rainFmt = (a, b) => {
+        if (a === 0 && b === 0.01) return '0';
+        if (b >= 4) return `${a}+`;
+        return `${a}–${b}`;
+      };
+      const tempFmt = (a, b) => `${a}–${b}`;
+      renderHist('left-chart', rainSeries, rainBins, rainFmt);
+      renderHist('right-chart', tempSeries, tempBins, tempFmt);
+    }
+    document.getElementById('rain-stats').innerHTML = statsLines.rain.join('<br>');
+    document.getElementById('temp-stats').innerHTML = statsLines.temp.join('<br>');
+  });
 }
 
 document.getElementById('k-slider').addEventListener('input', (e) => {

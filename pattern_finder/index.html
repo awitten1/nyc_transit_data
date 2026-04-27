@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NYC Transit — Net Flow Pattern Finder</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #1a1a2e; color: #e0e0e0;
+  display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+}
+
+/* ── Controls bar ── */
+#controls {
+  flex-shrink: 0; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 7px 16px; background: #16213e; border-bottom: 1px solid #0f3460;
+}
+#controls label { font-size: 12px; color: #a0a0c0; }
+.group { display: flex; align-items: center; gap: 6px; }
+.mode-toggle { display: flex; border-radius: 4px; overflow: hidden; border: 1px solid #0f3460; }
+.mode-toggle button { padding: 4px 11px; font-size: 12px; border-radius: 0; }
+button {
+  background: #4a5568; color: #e0e0e0; border: none;
+  padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;
+}
+button:hover { background: #5a6578; }
+button.active { background: #e94560; color: #fff; }
+input[type=range] {
+  -webkit-appearance: none; width: 90px; height: 4px;
+  background: #0f3460; border-radius: 2px; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 13px; height: 13px;
+  background: #e94560; border-radius: 50%;
+}
+#btn-run {
+  margin-left: auto; background: #e94560; color: #fff;
+  padding: 5px 18px; font-weight: 600; font-size: 13px;
+}
+#btn-run:hover { background: #c73e54; }
+#btn-run:disabled { background: #4a5568; cursor: not-allowed; opacity: 0.5; }
+
+/* ── Two-column layout: left=map, right=calendar+chart ── */
+#main { flex: 1; min-height: 0; display: flex; }
+
+/* LEFT — map takes exactly half the viewport */
+#map-panel {
+  flex: 1; min-width: 0; display: flex; flex-direction: column;
+  border-right: 1px solid #0f3460; background: #12122a;
+}
+#map-toolbar {
+  flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 5px 10px;
+  background: #16213e; border-bottom: 1px solid #0f3460;
+}
+#map-toolbar label { font-size: 11px; color: #a0a0c0; }
+#map-toolbar button { font-size: 11px; padding: 3px 10px; }
+#map-wrap { flex: 1; min-height: 0; position: relative; }
+#map { width: 100%; height: 100%; }
+/* rubber-band selection box */
+#sel-box {
+  position: absolute; pointer-events: none; z-index: 1000; display: none;
+  border: 1.5px solid #e94560; background: rgba(233,69,96,0.08);
+}
+#selection-panel {
+  flex-shrink: 0; max-height: 160px; overflow-y: auto;
+  border-top: 1px solid #0f3460; padding: 7px 10px;
+}
+#selection-panel h4 {
+  font-size: 11px; color: #a0a0c0; text-transform: uppercase;
+  letter-spacing: .4px; margin-bottom: 5px;
+}
+.sel-item {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; padding: 2px 0; gap: 6px;
+}
+.sel-item span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sel-remove { flex-shrink: 0; cursor: pointer; color: #718096; font-size: 14px; line-height: 1; }
+.sel-remove:hover { color: #e94560; }
+#sel-empty { font-size: 11px; color: #4a5568; }
+
+/* RIGHT — stacked: calendar on top, chart on bottom */
+#right-panel {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* Calendar section (top ~60%) */
+#cal-panel {
+  flex: 1.4; min-height: 0; display: flex; flex-direction: column;
+  border-bottom: 1px solid #0f3460; overflow: hidden;
+}
+#cal-header {
+  flex-shrink: 0; padding: 10px 16px 6px;
+  font-size: 13px; font-weight: 600; color: #e0e0e0;
+  border-bottom: 1px solid #0f3460;
+}
+#cal-body-wrap {
+  flex: 1; min-height: 0; overflow: auto; padding: 12px 16px;
+}
+
+/* Legend strip between calendar and chart */
+#legend {
+  flex-shrink: 0; display: flex; align-items: center; flex-wrap: wrap;
+  gap: 4px 14px; padding: 6px 16px;
+  background: #16213e; border-bottom: 1px solid #0f3460;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; cursor: pointer; user-select: none; white-space: nowrap;
+}
+.legend-swatch { width: 11px; height: 11px; border-radius: 2px; flex-shrink: 0; }
+.legend-item.dim { opacity: 0.35; }
+
+/* Chart section (bottom ~40%) */
+#chart-panel {
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+  background: #16213e; overflow: hidden; padding: 8px 16px 8px;
+}
+#chart-panel h3 {
+  flex-shrink: 0; font-size: 11px; color: #a0a0c0;
+  text-transform: uppercase; letter-spacing: .4px; margin-bottom: 4px;
+}
+#chart-svg-wrap { flex: 1; min-height: 0; }
+
+/* ── Calendar grid ── */
+.grid-table { border-collapse: separate; border-spacing: 4px; }
+.grid-table th { font-size: 11px; color: #a0a0c0; font-weight: 500; padding: 0 4px 6px; text-align: center; }
+.grid-table td { border-radius: 4px; cursor: pointer; border: 2px solid transparent; transition: border-color .12s; }
+.grid-table td:hover { border-color: rgba(255,255,255,0.55); }
+.grid-table td.selected { border-color: #fff !important; }
+.grid-table .row-label {
+  font-size: 11px; color: #a0a0c0; padding-right: 8px;
+  white-space: nowrap; cursor: default; background: none; border: none; text-align: right;
+}
+/* date calendar */
+.month-block { margin-bottom: 18px; }
+.month-block h4 { font-size: 11px; color: #a0a0c0; margin-bottom: 5px; }
+.week-row { display: flex; gap: 2px; margin-bottom: 2px; }
+.day-cell { border-radius: 2px; cursor: pointer; border: 1px solid transparent; }
+.day-cell:hover { border-color: rgba(255,255,255,0.5); }
+.day-cell.empty { background: transparent !important; cursor: default; }
+.day-cell.selected { border-color: #fff; }
+
+/* ── Empty / status ── */
+#cal-empty { color: #4a5568; font-size: 13px; font-weight: 400; }
+#status {
+  flex-shrink: 0; padding: 4px 16px; background: #16213e;
+  border-top: 1px solid #0f3460; font-size: 11px; color: #a0a0c0;
+}
+#tooltip {
+  position: fixed; pointer-events: none; z-index: 9999;
+  background: rgba(22,33,62,0.96); border: 1px solid #0f3460;
+  padding: 7px 11px; border-radius: 4px; font-size: 11px; display: none;
+}
+#tooltip strong { font-size: 12px; display: block; margin-bottom: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Controls -->
+<div id="controls">
+  <div class="group">
+    <label>Dataset:</label>
+    <div class="mode-toggle">
+      <button id="ds-subway"  class="active" onclick="onDatasetClick('subway')">Subway O-D</button>
+      <button id="ds-mta"                   onclick="onDatasetClick('mta')">MTA Entries</button>
+      <button id="ds-citibike"              onclick="onDatasetClick('citibike')">Citibike</button>
+      <button id="ds-taxi"                  onclick="onDatasetClick('taxi')">Taxi</button>
+      <button id="ds-multi"                 onclick="toggleMultiMode()" style="border-left:1px solid #0f3460">Multi ⊕</button>
+    </div>
+  </div>
+  <div class="group" id="map-view-ctrl" style="display:none">
+    <label>Map:</label>
+    <div class="mode-toggle">
+      <button id="mv-mta"      class="active" onclick="setActiveMapDataset('mta')">MTA</button>
+      <button id="mv-citibike"               onclick="setActiveMapDataset('citibike')">Citibike</button>
+      <button id="mv-taxi"                   onclick="setActiveMapDataset('taxi')">Taxi</button>
+    </div>
+  </div>
+  <div class="group">
+    <label>Algorithm:</label>
+    <select id="algo-select" onchange="onAlgoChange()" style="background:#1a1a2e;color:#e0e0e0;border:1px solid #0f3460;padding:3px 8px;border-radius:4px;font-size:12px">
+      <option value="kmeans">K-Means</option>
+      <option value="kmedoids">K-Medoids</option>
+      <option value="agglomerative">Agglomerative</option>
+      <option value="dbscan">DBSCAN</option>
+    </select>
+  </div>
+  <!-- k controls (kmeans / kmedoids / agglomerative) -->
+  <div class="group" id="ctrl-k">
+    <label>k =</label>
+    <input type="range" id="k-slider" min="2" max="10" value="5"
+           oninput="document.getElementById('k-val').textContent=this.value">
+    <span id="k-val" style="font-size:12px;min-width:14px">5</span>
+  </div>
+  <!-- DBSCAN controls -->
+  <div class="group" id="ctrl-dbscan" style="display:none">
+    <label>ε =</label>
+    <input type="range" id="eps-slider" min="5" max="500" value="50" step="5"
+           oninput="document.getElementById('eps-val').textContent=this.value">
+    <span id="eps-val" style="font-size:12px;min-width:28px">50</span>
+    <label style="margin-left:8px">min =</label>
+    <input type="range" id="min-slider" min="2" max="20" value="3"
+           oninput="document.getElementById('min-val').textContent=this.value">
+    <span id="min-val" style="font-size:12px;min-width:18px">3</span>
+  </div>
+  <div class="group">
+    <label>Shape:</label>
+    <div class="mode-toggle">
+      <button id="norm-off" class="active" onclick="setNormalize(false)">Volume</button>
+      <button id="norm-on"               onclick="setNormalize(true)">Normalized</button>
+    </div>
+  </div>
+  <div class="group">
+    <label>Cluster by:</label>
+    <div class="mode-toggle">
+      <button id="cm-date"    class="active" onclick="setClusteringMode('date')">Dates</button>
+      <button id="cm-station"               onclick="setClusteringMode('station')">Stations</button>
+      <button id="cm-anomaly"               onclick="setClusteringMode('anomaly')">Anomaly</button>
+    </div>
+  </div>
+  <div class="group" id="ctrl-threshold" style="display:none">
+    <label>Outlier %ile =</label>
+    <input type="range" id="threshold-slider" min="80" max="99" value="95" step="1"
+           oninput="document.getElementById('threshold-val').textContent=this.value">
+    <span id="threshold-val" style="font-size:12px;min-width:28px">95</span>
+  </div>
+  <button id="btn-run" disabled onclick="runClustering()">Run ▶</button>
+</div>
+
+<!-- Two columns -->
+<div id="main">
+
+  <!-- LEFT half: map + selected list -->
+  <div id="map-panel">
+    <div id="map-toolbar">
+      <label>Mode:</label>
+      <div class="mode-toggle">
+        <button id="mode-box" class="active" onclick="setMapMode('box')">⬚ Box Select</button>
+        <button id="mode-pan"               onclick="setMapMode('pan')">✥ Pan</button>
+      </div>
+      <button onclick="clearAllStations()" style="margin-left:auto;font-size:11px;padding:3px 9px">Clear</button>
+    </div>
+    <div id="map-wrap">
+      <div id="map"></div>
+      <div id="sel-box"></div>
+    </div>
+    <div id="selection-panel">
+      <h4>Selected (<span id="sel-count">0</span>)</h4>
+      <div id="sel-list"><div id="sel-empty">Click stations on the map</div></div>
+    </div>
+  </div>
+
+  <!-- RIGHT half: calendar (top) + legend strip + chart (bottom) -->
+  <div id="right-panel">
+
+    <!-- Calendar -->
+    <div id="cal-panel">
+      <div id="cal-header">
+        <span id="cal-empty">Run clustering to see patterns</span>
+        <span id="cal-title" style="display:none"></span>
+      </div>
+      <div id="cal-body-wrap">
+        <div id="calendar-body"></div>
+      </div>
+    </div>
+
+    <!-- Legend strip -->
+    <div id="legend"><div id="legend-items" style="display:flex;flex-wrap:wrap;gap:4px 14px"></div></div>
+
+    <!-- Chart -->
+    <div id="chart-panel">
+      <h3 id="chart-title">Net Flow by Hour</h3>
+      <div id="chart-svg-wrap"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<div id="status">Loading stations…</div>
+<div id="tooltip"></div>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+const CLUSTER_COLORS = [
+  '#e94560','#00d2ff','#f59e0b','#10b981','#a855f7',
+  '#f97316','#06b6d4','#84cc16','#ec4899','#64748b','#ef4444','#3b82f6',
+];
+const NOISE_COLOR = '#3a3a4a';   // DBSCAN noise (cluster = -1)
+
+function clusterColor(ci) {
+  return ci === -1 ? NOISE_COLOR : CLUSTER_COLORS[ci % CLUSTER_COLORS.length];
+}
+const DOW_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DOW_FULL  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const MONTHS    = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const NYC = [40.75, -73.98];
+const DATASET_LABELS = { mta: 'MTA Entries', citibike: 'Citibike', taxi: 'Taxi' };
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let dataset       = 'subway';
+let normalize     = false;
+let stations      = [];           // all stations for current dataset
+let selectedIds   = new Set();    // station_id strings (points to per-dataset set in multi mode)
+let stationMap    = {};           // station_id -> station object (current map dataset)
+let stationMaps   = {};           // ds -> {id: station}  (cache across datasets)
+let markerMap     = {};           // station_id -> Leaflet marker
+let currentData   = null;
+let selectedKey   = null;
+let hiddenClusters = new Set();
+
+// ── Clustering mode ───────────────────────────────────────────────────────────
+let clusteringMode  = 'date';      // 'date' | 'station'
+let stationClusters = {};          // station_id -> cluster index (station mode)
+let highlightStation = null;       // station_id whose pattern is overlaid in chart
+
+// ── Multi-dataset state ───────────────────────────────────────────────────────
+let isMultiMode   = false;
+let multiDatasets = new Set();                              // which datasets are toggled on
+let activeMapDataset = 'mta';                              // whose stations are on the map
+const selectedIdsPerDataset = {                            // per-dataset selections
+  mta: new Set(), citibike: new Set(), taxi: new Set()
+};
+
+// ── Map init ──────────────────────────────────────────────────────────────────
+const map = L.map('map', { zoomControl: true }).setView(NYC, 11);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '© CARTO', maxZoom: 19
+}).addTo(map);
+
+// ── Box selection ─────────────────────────────────────────────────────────────
+let mapMode  = 'box';   // 'box' | 'pan'
+let boxStart = null;    // L.Point where drag began
+const selBox = document.getElementById('sel-box');
+
+function setMapMode(mode) {
+  mapMode = mode;
+  document.getElementById('mode-box').classList.toggle('active', mode === 'box');
+  document.getElementById('mode-pan').classList.toggle('active', mode === 'pan');
+  if (mode === 'pan') map.dragging.enable();
+  else map.dragging.disable();
+}
+
+// Attach listeners to #map-wrap (parent of #map and #sel-box).
+// Using clientX/Y minus bounding rect gives stable coords regardless of
+// which Leaflet child element (tile, SVG marker, etc.) the mouse is over.
+const mapWrap = document.getElementById('map-wrap');
+
+function wrapPoint(e) {
+  const r = mapWrap.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+mapWrap.addEventListener('mousedown', e => {
+  if (mapMode !== 'box' || e.button !== 0) return;
+  e.preventDefault();
+  boxStart = wrapPoint(e);
+  Object.assign(selBox.style, {
+    display: 'block',
+    left: boxStart.x + 'px', top: boxStart.y + 'px',
+    width: '0', height: '0',
+  });
+});
+
+mapWrap.addEventListener('mousemove', e => {
+  if (mapMode !== 'box' || !boxStart) return;
+  const cur = wrapPoint(e);
+  Object.assign(selBox.style, {
+    left:   Math.min(boxStart.x, cur.x) + 'px',
+    top:    Math.min(boxStart.y, cur.y) + 'px',
+    width:  Math.abs(cur.x - boxStart.x) + 'px',
+    height: Math.abs(cur.y - boxStart.y) + 'px',
+  });
+});
+
+mapWrap.addEventListener('mouseup', e => {
+  if (mapMode !== 'box' || !boxStart) return;
+  const cur = wrapPoint(e);
+  selBox.style.display = 'none';
+
+  const dx = Math.abs(cur.x - boxStart.x);
+  const dy = Math.abs(cur.y - boxStart.y);
+  const start = { ...boxStart };
+  boxStart = null;
+
+  // Tiny drag = single click; let Leaflet's marker click handler fire normally
+  if (dx < 5 && dy < 5) return;
+
+  // containerPointToLatLng expects coords relative to the Leaflet map container.
+  // Since #map fills #map-wrap, wrapPoint coords == container coords.
+  const p1 = map.containerPointToLatLng(L.point(start.x, start.y));
+  const p2 = map.containerPointToLatLng(L.point(cur.x, cur.y));
+  const bounds = L.latLngBounds(p1, p2);
+
+  let changed = false;
+  stations.forEach(s => {
+    if (s.lat == null || s.lng == null) return;
+    if (bounds.contains([s.lat, s.lng])) {
+      selectedIds.add(String(s.station_id));
+      refreshMarker(String(s.station_id));
+      changed = true;
+    }
+  });
+  if (changed) {
+    updateSelectionPanel();
+    document.getElementById('btn-run').disabled = false;
+  }
+});
+
+mapWrap.addEventListener('mouseleave', () => {
+  if (boxStart) { selBox.style.display = 'none'; boxStart = null; }
+});
+
+// Start in box-select mode
+map.dragging.disable();
+
+// ── Dataset switch ────────────────────────────────────────────────────────────
+function setDataset(ds) {
+  dataset = ds;
+  ['subway','mta','citibike','taxi'].forEach(d =>
+    document.getElementById('ds-'+d).classList.toggle('active', d === ds)
+  );
+  document.getElementById('ds-multi').classList.remove('active');
+  selectedIds.clear();
+  clearCalendar();
+  loadStations();
+}
+
+function onDatasetClick(ds) {
+  if (isMultiMode) {
+    if (ds === 'subway') return;   // Subway O-D is grid-mode only, excluded from multi
+    toggleMultiDataset(ds);
+  } else {
+    setDataset(ds);
+  }
+}
+
+function toggleMultiMode() {
+  isMultiMode = !isMultiMode;
+  document.getElementById('ds-multi').classList.toggle('active', isMultiMode);
+  document.getElementById('map-view-ctrl').style.display = isMultiMode ? '' : 'none';
+
+  if (isMultiMode) {
+    // Enter multi mode: default to MTA active; deactivate Subway O-D
+    document.getElementById('ds-subway').classList.remove('active');
+    multiDatasets = new Set(['mta']);
+    ['mta','citibike','taxi'].forEach(d =>
+      document.getElementById('ds-'+d).classList.toggle('active', d === 'mta')
+    );
+    activeMapDataset = 'mta';
+    dataset = 'mta';
+    selectedIds = selectedIdsPerDataset.mta;
+    ['mta','citibike','taxi'].forEach(d =>
+      document.getElementById('mv-'+d).classList.toggle('active', d === 'mta')
+    );
+    loadStations();
+  } else {
+    // Exit multi mode: clear per-dataset selections, back to Subway O-D
+    for (const k of Object.keys(selectedIdsPerDataset)) selectedIdsPerDataset[k].clear();
+    multiDatasets.clear();
+    selectedIds = new Set();
+    setDataset('subway');
+  }
+  clearCalendar();
+}
+
+function toggleMultiDataset(ds) {
+  if (multiDatasets.has(ds)) {
+    multiDatasets.delete(ds);
+    selectedIdsPerDataset[ds].clear();
+    document.getElementById('ds-'+ds).classList.remove('active');
+  } else {
+    multiDatasets.add(ds);
+    document.getElementById('ds-'+ds).classList.add('active');
+  }
+  updateRunButton();
+  updateSelectionPanel();
+}
+
+function setActiveMapDataset(ds) {
+  activeMapDataset = ds;
+  dataset = ds;
+  selectedIds = selectedIdsPerDataset[ds];
+  ['mta','citibike','taxi'].forEach(d =>
+    document.getElementById('mv-'+d).classList.toggle('active', d === ds)
+  );
+  loadStations();
+}
+
+function updateRunButton() {
+  let enabled;
+  if (clusteringMode === 'station' || clusteringMode === 'anomaly') {
+    enabled = true;   // no station selection needed
+  } else if (isMultiMode) {
+    const active = [...multiDatasets];
+    enabled = active.length >= 2 && active.every(d => selectedIdsPerDataset[d].size > 0);
+  } else {
+    enabled = selectedIds.size > 0;
+  }
+  document.getElementById('btn-run').disabled = !enabled;
+}
+
+function setClusteringMode(mode) {
+  clusteringMode = mode;
+  document.getElementById('cm-date').classList.toggle('active',    mode === 'date');
+  document.getElementById('cm-station').classList.toggle('active', mode === 'station');
+  document.getElementById('cm-anomaly').classList.toggle('active', mode === 'anomaly');
+
+  const stationMode  = mode === 'station';
+  const anomalyMode  = mode === 'anomaly';
+  const dimMap = stationMode || anomalyMode;
+  document.getElementById('map-toolbar').style.opacity     = dimMap ? '0.4' : '1';
+  document.getElementById('selection-panel').style.opacity = anomalyMode ? '0.4' : '1';
+  document.getElementById('map-view-ctrl').style.display   =
+    (!dimMap && isMultiMode) ? '' : 'none';
+  document.getElementById('ctrl-threshold').style.display  = anomalyMode ? '' : 'none';
+  // Hide k / dbscan controls in anomaly mode (not clustering)
+  document.getElementById('ctrl-k').style.display      = anomalyMode ? 'none' : (document.getElementById('algo-select').value === 'dbscan' ? 'none' : '');
+  document.getElementById('ctrl-dbscan').style.display = anomalyMode ? 'none' : (document.getElementById('algo-select').value === 'dbscan' ? '' : 'none');
+
+  stationClusters  = {};
+  highlightStation = null;
+  clearCalendar();
+  Object.keys(markerMap).forEach(id => refreshMarker(id));
+  updateRunButton();
+}
+
+async function loadStations() {
+  setStatus('Loading stations…');
+  clearMarkers();
+  const res = await fetch(`/api/stations?dataset=${dataset}`);
+  stations = await res.json();
+  stationMap = {};
+  stations.forEach(s => { stationMap[String(s.station_id)] = s; });
+  stationMaps[dataset] = stationMap;   // cache for multi-mode name lookups
+  addMarkers();
+  updateSelectionPanel();
+  setStatus(`${stations.length} stations — click to select`);
+}
+
+// ── Markers ───────────────────────────────────────────────────────────────────
+function clearMarkers() {
+  Object.values(markerMap).forEach(m => map.removeLayer(m));
+  markerMap = {};
+}
+
+function markerStyle(id) {
+  if (clusteringMode === 'station' && stationClusters[id] !== undefined) {
+    const ci  = stationClusters[id];
+    const hi  = id === highlightStation;
+    return {
+      radius:      hi ? 9 : 6,
+      fillColor:   clusterColor(ci),
+      color:       hi ? '#fff' : '#000',
+      weight:      hi ? 2 : 0.5,
+      fillOpacity: 0.88,
+    };
+  }
+  const sel = selectedIds.has(String(id));
+  return {
+    radius:      sel ? 7 : 4,
+    fillColor:   sel ? '#e94560' : '#4a6fa5',
+    color:       sel ? '#fff' : '#2a4a7a',
+    weight:      sel ? 1.5 : 0.8,
+    fillOpacity: sel ? 0.95 : 0.65,
+  };
+}
+
+function addMarkers() {
+  stations.forEach(s => {
+    if (s.lat == null || s.lng == null) return;
+    const id = String(s.station_id);
+    const m = L.circleMarker([s.lat, s.lng], markerStyle(id))
+      .addTo(map)
+      .on('click', () => {
+        if (clusteringMode === 'station') highlightStationPattern(id);
+        else toggleStation(id);
+      });
+    m.bindTooltip(s.station_name, { direction: 'top', offset: [0, -4], opacity: 0.9 });
+    markerMap[id] = m;
+  });
+}
+
+function highlightStationPattern(id) {
+  if (!currentData || currentData.mode !== 'station') return;
+  highlightStation = (highlightStation === id) ? null : id;
+  Object.keys(markerMap).forEach(mid => refreshMarker(mid));
+  const st = currentData.stations.find(s => String(s.station_id) === id);
+  renderMultiChart(highlightStation && st ? st.pattern : null);
+}
+
+function refreshMarker(id) {
+  if (markerMap[id]) markerMap[id].setStyle(markerStyle(id));
+}
+
+// ── Station selection ─────────────────────────────────────────────────────────
+function clearAllStations() {
+  selectedIds.clear();   // clear FIRST so markerStyle() returns unselected
+  Object.keys(markerMap).forEach(id => refreshMarker(id));
+  updateSelectionPanel();
+  updateRunButton();
+}
+
+function toggleStation(id) {
+  id = String(id);
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  refreshMarker(id);
+  updateSelectionPanel();
+  updateRunButton();
+}
+
+function removeStation(id) {
+  selectedIds.delete(String(id));
+  refreshMarker(String(id));
+  updateSelectionPanel();
+  updateRunButton();
+}
+
+function removeStationFromDataset(ds, id) {
+  selectedIdsPerDataset[ds].delete(String(id));
+  if (ds === activeMapDataset) refreshMarker(String(id));
+  updateSelectionPanel();
+  updateRunButton();
+}
+
+function updateSelectionPanel() {
+  if (isMultiMode) {
+    let total = 0;
+    const parts = [];
+    for (const ds of ['mta', 'citibike', 'taxi']) {
+      if (!multiDatasets.has(ds)) continue;
+      const ids = [...selectedIdsPerDataset[ds]];
+      total += ids.length;
+      const dsMap = stationMaps[ds] || {};
+      parts.push(`<div style="font-size:10px;color:#a0a0c0;text-transform:uppercase;letter-spacing:.4px;margin:4px 0 2px">${DATASET_LABELS[ds]}</div>`);
+      if (ids.length === 0) {
+        parts.push(`<div style="font-size:11px;color:#4a5568">None selected</div>`);
+      } else {
+        ids.forEach(id => {
+          const name = dsMap[id]?.station_name || id;
+          parts.push(`<div class="sel-item"><span title="${name}">${name}</span><span class="sel-remove" onclick="removeStationFromDataset('${ds}','${id}')">×</span></div>`);
+        });
+      }
+    }
+    document.getElementById('sel-count').textContent = total;
+    document.getElementById('sel-list').innerHTML = parts.length
+      ? parts.join('')
+      : '<div id="sel-empty">Select stations from each dataset</div>';
+    return;
+  }
+  document.getElementById('sel-count').textContent = selectedIds.size;
+  const list = document.getElementById('sel-list');
+  if (selectedIds.size === 0) {
+    list.innerHTML = '<div id="sel-empty">Click stations on the map</div>';
+    return;
+  }
+  list.innerHTML = [...selectedIds].map(id => {
+    const s = stationMap[id];
+    const name = s ? s.station_name : id;
+    return `<div class="sel-item">
+      <span title="${name}">${name}</span>
+      <span class="sel-remove" onclick="removeStation('${id}')">×</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Run clustering ────────────────────────────────────────────────────────────
+async function runClustering() {
+  if (clusteringMode === 'station') { await runStationClustering(); return; }
+  if (clusteringMode === 'anomaly') { await runAnomalyDetection(); return; }
+  if (isMultiMode) { await runMultiClustering(); return; }
+  if (selectedIds.size === 0) return;
+  const k   = document.getElementById('k-slider').value;
+  const ids = [...selectedIds].join(',');
+  setStatus('Computing…');
+  document.getElementById('btn-run').disabled = true;
+  try {
+    const algo = document.getElementById('algo-select').value;
+    const eps  = document.getElementById('eps-slider').value;
+    const minS = document.getElementById('min-slider').value;
+    const res = await fetch(
+      `/api/net_flow?station_ids=${encodeURIComponent(ids)}&dataset=${dataset}&k=${k}&normalize=${normalize}&algorithm=${algo}&eps=${eps}&min_samples=${minS}`
+    );
+    currentData = await res.json();
+    hiddenClusters.clear();
+    selectedKey = null;
+    render();
+    setStatus(`${currentData.station_label} — ${currentData.vectors.length} patterns, ${currentData.centroids.length} clusters`);
+  } catch (e) {
+    setStatus('Error: ' + e.message);
+  }
+  updateRunButton();
+}
+
+async function runStationClustering() {
+  const k    = document.getElementById('k-slider').value;
+  const algo = document.getElementById('algo-select').value;
+  const eps  = document.getElementById('eps-slider').value;
+  const minS = document.getElementById('min-slider').value;
+  const ds   = isMultiMode ? activeMapDataset : dataset;
+  setStatus('Computing station clusters…');
+  document.getElementById('btn-run').disabled = true;
+  try {
+    const res = await fetch(
+      `/api/station_clusters?dataset=${ds}&k=${k}&normalize=${normalize}&algorithm=${algo}&eps=${eps}&min_samples=${minS}`
+    );
+    currentData = await res.json();
+    if (currentData.error) { setStatus('Error: ' + currentData.error); updateRunButton(); return; }
+    // Build stationClusters lookup and colour all markers
+    stationClusters = {};
+    highlightStation = null;
+    currentData.stations.forEach(s => {
+      stationClusters[String(s.station_id)] = s.cluster;
+    });
+    hiddenClusters.clear();
+    selectedKey = null;
+    render();
+    setStatus(`Station clusters (${ds}) — ${currentData.stations.length} stations, ${currentData.centroids.length} clusters`);
+  } catch (e) {
+    setStatus('Error: ' + e.message);
+  }
+  updateRunButton();
+}
+
+async function runAnomalyDetection() {
+  const ds  = isMultiMode ? activeMapDataset : dataset;
+  if (ds === 'subway') { setStatus('Anomaly detection not available for Subway O-D (no actual dates).'); return; }
+  const pct = document.getElementById('threshold-slider').value;
+  const ids = clusteringMode === 'anomaly' && selectedIds.size > 0
+    ? [...selectedIds].join(',') : '';
+  const scope = ids ? `${selectedIds.size} stations` : 'all stations';
+  setStatus(`Computing anomaly scores (${ds}, ${scope})…`);
+  document.getElementById('btn-run').disabled = true;
+  try {
+    const res = await fetch(
+      `/api/anomaly_dates?dataset=${ds}&station_ids=${encodeURIComponent(ids)}&threshold_pct=${pct}`
+    );
+    currentData = await res.json();
+    const err = currentData.error || currentData.detail;
+    if (err) { setStatus('Error: ' + err); console.error('[anomaly]', currentData); updateRunButton(); return; }
+    if (!currentData.dates) { setStatus('Error: unexpected response — ' + JSON.stringify(currentData).slice(0,120)); updateRunButton(); return; }
+    selectedKey = null;
+    render();
+    const outliers = currentData.dates.filter(d => d.is_outlier).length;
+    setStatus(`Anomaly (${ds}, ${scope}) — ${currentData.dates.length} dates, ${outliers} outliers (≥ ${pct}th pct)`);
+  } catch (e) {
+    setStatus('Error: ' + e.message);
+  }
+  updateRunButton();
+}
+
+async function runMultiClustering() {
+  const k    = document.getElementById('k-slider').value;
+  const algo = document.getElementById('algo-select').value;
+  const eps  = document.getElementById('eps-slider').value;
+  const minS = document.getElementById('min-slider').value;
+  const params = new URLSearchParams({ k, normalize, algorithm: algo, eps, min_samples: minS });
+  if (multiDatasets.has('mta')      && selectedIdsPerDataset.mta.size > 0)
+    params.set('mta_ids',      [...selectedIdsPerDataset.mta].join(','));
+  if (multiDatasets.has('citibike') && selectedIdsPerDataset.citibike.size > 0)
+    params.set('citibike_ids', [...selectedIdsPerDataset.citibike].join(','));
+  if (multiDatasets.has('taxi')     && selectedIdsPerDataset.taxi.size > 0)
+    params.set('taxi_ids',     [...selectedIdsPerDataset.taxi].join(','));
+  setStatus('Computing joint clustering…');
+  document.getElementById('btn-run').disabled = true;
+  try {
+    const res = await fetch(`/api/multi_flow?${params}`);
+    currentData = await res.json();
+    if (currentData.error) { setStatus('Error: ' + currentData.error); updateRunButton(); return; }
+    hiddenClusters.clear();
+    selectedKey = null;
+    render();
+    setStatus(`${currentData.station_label} — ${currentData.vectors.length} dates, ${currentData.centroids.length} clusters`);
+  } catch (e) {
+    setStatus('Error: ' + e.message);
+  }
+  updateRunButton();
+}
+
+function onAlgoChange() {
+  const algo = document.getElementById('algo-select').value;
+  document.getElementById('ctrl-k').style.display      = algo === 'dbscan' ? 'none' : '';
+  document.getElementById('ctrl-dbscan').style.display = algo === 'dbscan' ? ''     : 'none';
+}
+
+function setNormalize(v) {
+  normalize = v;
+  document.getElementById('norm-off').classList.toggle('active', !v);
+  document.getElementById('norm-on').classList.toggle('active',  v);
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function render() {
+  if (!currentData) return;
+  if (currentData.mode === 'anomaly') {
+    renderAnomalyLegend();
+    renderAnomalyCalendar();
+    renderAnomalyChart(null, null);
+    document.getElementById('cal-empty').style.display = 'none';
+    document.getElementById('cal-title').style.display = 'inline';
+    document.getElementById('cal-title').textContent =
+      `Anomaly — ${currentData.dataset}${currentData.dates.length ? ' · ' + currentData.dates.length + ' dates' : ''}`;
+    document.getElementById('chart-title').textContent = 'Actual vs Expected (click a date)';
+    return;
+  }
+  if (currentData.mode === 'station') {
+    renderLegend();
+    renderStationCalendar();
+    renderMultiChart(null);
+    // Colour markers
+    Object.keys(markerMap).forEach(id => refreshMarker(id));
+    document.getElementById('cal-empty').style.display = 'none';
+    document.getElementById('cal-title').style.display = 'inline';
+    document.getElementById('cal-title').textContent = `Station clusters — ${currentData.dataset}`;
+    document.getElementById('chart-title').textContent = 'Weekly Pattern by Day';
+    return;
+  }
+  if (!currentData.vectors || !currentData.vectors.length) return;
+  renderLegend();
+  renderChart(null);
+  if (currentData.mode === 'grid') renderGridCalendar();
+  else renderDateCalendar();
+  document.getElementById('cal-empty').style.display = 'none';
+  document.getElementById('cal-title').style.display = 'inline';
+  document.getElementById('cal-title').textContent = currentData.station_label;
+  document.getElementById('chart-title').textContent =
+    currentData.multi ? 'Hourly Patterns by Dataset' : 'Net Flow by Hour';
+}
+
+function renderStationCalendar() {
+  const body = document.getElementById('calendar-body');
+  const rows = currentData.centroids.map(c => {
+    const label = c.cluster === -1 ? 'Noise' : `Cluster ${c.cluster + 1}`;
+    const color = clusterColor(c.cluster);
+    const hidden = hiddenClusters.has(c.cluster);
+    return `<div class="sel-item" style="padding:4px 0;opacity:${hidden ? 0.3 : 1}">
+      <span style="display:inline-block;width:10px;height:10px;border-radius:2px;
+            background:${color};flex-shrink:0;margin-right:6px"></span>
+      <span style="font-size:12px;font-weight:600;color:${color}">${label}</span>
+      <span style="font-size:11px;color:#718096;margin-left:6px">${c.count} stations</span>
+    </div>`;
+  }).join('');
+  body.innerHTML = `<div style="padding:4px 0 8px;font-size:11px;color:#a0a0c0;text-transform:uppercase;letter-spacing:.4px">Cluster summary</div>${rows}
+    <div style="margin-top:12px;font-size:11px;color:#4a5568">Click a station on the map to highlight its weekly pattern</div>`;
+}
+
+function clearCalendar() {
+  currentData = null;
+  document.getElementById('cal-empty').style.display = 'inline';
+  document.getElementById('cal-title').style.display = 'none';
+  document.getElementById('calendar-body').innerHTML = '';
+  document.getElementById('legend-items').innerHTML = '';
+  d3.select('#chart-svg-wrap').selectAll('*').remove();
+}
+
+// ── Legend ────────────────────────────────────────────────────────────────────
+function renderLegend() {
+  document.getElementById('legend-items').innerHTML =
+    currentData.centroids.map(c => `
+      <div class="legend-item ${hiddenClusters.has(c.cluster) ? 'dim' : ''}"
+           onclick="toggleCluster(${c.cluster})">
+        <div class="legend-swatch" style="background:${clusterColor(c.cluster)}"></div>
+        <span>${c.cluster === -1 ? 'Noise' : 'C' + (c.cluster + 1)} <span style="color:#718096">(${c.count})</span></span>
+      </div>`
+    ).join('');
+}
+
+function toggleCluster(ci) {
+  hiddenClusters.has(ci) ? hiddenClusters.delete(ci) : hiddenClusters.add(ci);
+  renderLegend();
+  renderChart(selectedKey ? currentData.vectors.find(v => cellKey(v) === selectedKey)?.net_flow_vector : null);
+  if (currentData.mode === 'grid') renderGridCalendar();
+  else renderDateCalendar();
+}
+
+function cellKey(v) {
+  return v.date ?? `${v.month}_${v.dow}`;
+}
+
+// ── Line chart ────────────────────────────────────────────────────────────────
+function renderChart(highlightVector) {
+  if (currentData && currentData.multi) { renderMultiChart(highlightVector); return; }
+  const wrap = document.getElementById('chart-svg-wrap');
+  const W = wrap.clientWidth || 260;
+  const H = wrap.clientHeight || 260;
+  d3.select(wrap).selectAll('*').remove();
+  if (!currentData) return;
+
+  const { centroids } = currentData;
+  const margin = { top: 8, right: 10, bottom: 26, left: 46 };
+  const iw = W - margin.left - margin.right;
+  const ih = H - margin.top - margin.bottom;
+
+  const allVals = centroids.flatMap(c => c.centroid);
+  if (highlightVector) allVals.push(...highlightVector);
+  const yMax = Math.max(Math.abs(d3.min(allVals)), Math.abs(d3.max(allVals)), 1);
+
+  const xSc = d3.scaleLinear().domain([0, 23]).range([0, iw]);
+  const ySc = d3.scaleLinear().domain([-yMax, yMax]).range([ih, 0]);
+
+  const svg = d3.select(wrap).append('svg').attr('width', W).attr('height', H);
+  const g   = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  g.append('g').call(d3.axisLeft(ySc).ticks(5).tickFormat(d3.format('.0f')))
+   .call(ax => ax.select('.domain').remove())
+   .call(ax => ax.selectAll('line').attr('stroke','#0f3460'))
+   .call(ax => ax.selectAll('text').attr('fill','#718096').style('font-size','10px'));
+
+  g.append('g').attr('transform',`translate(0,${ih})`)
+   .call(d3.axisBottom(xSc).ticks(6).tickFormat(h => `${h}:00`))
+   .call(ax => ax.select('.domain').attr('stroke','#0f3460'))
+   .call(ax => ax.selectAll('line').attr('stroke','#0f3460'))
+   .call(ax => ax.selectAll('text').attr('fill','#718096').style('font-size','10px'));
+
+  // Zero line
+  g.append('line')
+   .attr('x1',0).attr('x2',iw).attr('y1',ySc(0)).attr('y2',ySc(0))
+   .attr('stroke','#4a5568').attr('stroke-width',1).attr('stroke-dasharray','4,3');
+
+  const line = d3.line().x((_,i) => xSc(i)).y(d => ySc(d))
+                 .curve(d3.curveCatmullRom.alpha(0.5));
+
+  centroids.forEach(c => {
+    g.append('path').datum(c.centroid)
+     .attr('fill','none')
+     .attr('stroke', clusterColor(c.cluster))
+     .attr('stroke-width', 2)
+     .attr('opacity', hiddenClusters.has(c.cluster) ? 0.08 : 0.85)
+     .attr('d', line);
+  });
+
+  if (highlightVector) {
+    g.append('path').datum(highlightVector)
+     .attr('fill','none').attr('stroke','#fff')
+     .attr('stroke-width',1.5).attr('stroke-dasharray','5,3').attr('opacity',0.9)
+     .attr('d', line);
+  }
+
+  // ── Crosshair + hover tooltip ──────────────────────────────────────────────
+  const crosshair = g.append('line')
+    .attr('y1', 0).attr('y2', ih)
+    .attr('stroke', '#718096').attr('stroke-width', 1)
+    .attr('stroke-dasharray', '3,3').attr('opacity', 0);
+
+  // Dot layer — one circle per visible series at the hovered hour
+  const dotLayer = g.append('g');
+
+  // Inline label box anchored inside the chart
+  const hoverG = svg.append('g').attr('opacity', 0);
+  const hoverBg = hoverG.append('rect')
+    .attr('rx', 3).attr('fill', 'rgba(22,33,62,0.93)')
+    .attr('stroke', '#0f3460').attr('stroke-width', 1);
+  const hoverLines = [];  // text elements added dynamically
+
+  // Invisible overlay captures mouse
+  g.append('rect')
+    .attr('width', iw).attr('height', ih)
+    .attr('fill', 'transparent')
+    .on('mousemove', function(event) {
+      const [mx] = d3.pointer(event, this);
+      const hour = Math.round(xSc.invert(mx));
+      if (hour < 0 || hour > 23) return;
+      const cx = xSc(hour);
+
+      crosshair.attr('x1', cx).attr('x2', cx).attr('opacity', 1);
+      dotLayer.selectAll('*').remove();
+
+      // Collect visible series values at this hour
+      const visibleSeries = [];
+      centroids.forEach(c => {
+        if (hiddenClusters.has(c.cluster)) return;
+        visibleSeries.push({
+          color: clusterColor(c.cluster),
+          label: c.cluster === -1 ? 'Noise' : `C${c.cluster + 1}`,
+          val: c.centroid[hour],
+        });
+      });
+      if (highlightVector) {
+        visibleSeries.push({ color: '#fff', label: 'Selected', val: highlightVector[hour] });
+      }
+
+      // Draw dots
+      visibleSeries.forEach(s => {
+        dotLayer.append('circle')
+          .attr('cx', cx).attr('cy', ySc(s.val))
+          .attr('r', 3.5).attr('fill', s.color).attr('stroke', '#1a1a2e').attr('stroke-width', 1);
+      });
+
+      // Build text lines
+      hoverG.selectAll('text').remove();
+      const lineH = 14;
+      const pad = 7;
+      const fmt = d3.format('+.1f');
+
+      const headerTxt = hoverG.append('text')
+        .attr('fill', '#e0e0e0').style('font-size', '11px').style('font-weight', '600')
+        .text(`${hour}:00 – ${hour + 1}:00`);
+
+      const rowTexts = visibleSeries.map((s, i) => {
+        return hoverG.append('text')
+          .attr('fill', s.color).style('font-size', '11px')
+          .text(`${s.label}: ${fmt(s.val)}`);
+      });
+
+      // Measure widest text
+      const allTexts = [headerTxt, ...rowTexts];
+      const maxW = Math.max(...allTexts.nodes().map(n => n.getBBox().width));
+      const boxW = maxW + pad * 2;
+      const boxH = (1 + visibleSeries.length) * lineH + pad * 2;
+
+      // Position box: right of cursor unless too close to right edge
+      const boxX = cx + margin.left + 10 + boxW > W ? cx - boxW - 10 : cx + 10;
+      const boxY = Math.max(0, Math.min(ih - boxH, ySc(visibleSeries[0]?.val ?? 0) - boxH / 2));
+
+      hoverBg.attr('x', boxX).attr('y', margin.top + boxY).attr('width', boxW).attr('height', boxH);
+      headerTxt.attr('x', boxX + pad).attr('y', margin.top + boxY + pad + lineH * 0.85);
+      rowTexts.forEach((t, i) =>
+        t.attr('x', boxX + pad).attr('y', margin.top + boxY + pad + lineH * (i + 1) + lineH * 0.85)
+      );
+      hoverG.attr('opacity', 1);
+    })
+    .on('mouseleave', () => {
+      crosshair.attr('opacity', 0);
+      dotLayer.selectAll('*').remove();
+      hoverG.attr('opacity', 0);
+    });
+}
+
+// ── Multi-dataset stacked sub-charts ──────────────────────────────────────────
+function renderMultiChart(highlightVector) {
+  const wrap = document.getElementById('chart-svg-wrap');
+  const W = wrap.clientWidth || 260;
+  const H = wrap.clientHeight || 260;
+  d3.select(wrap).selectAll('*').remove();
+  if (!currentData) return;
+
+  const { centroids, segment_labels, segment_size } = currentData;
+  const n   = segment_labels.length;
+  const gap = 6;
+  const panelH = Math.floor((H - gap * (n - 1)) / n);
+  const svg = d3.select(wrap).append('svg').attr('width', W).attr('height', H);
+
+  segment_labels.forEach((label, si) => {
+    const start       = si * segment_size;
+    const segCentroids = centroids.map(c => ({ ...c, centroid: c.centroid.slice(start, start + segment_size) }));
+    const segHL        = highlightVector ? highlightVector.slice(start, start + segment_size) : null;
+
+    const margin = { top: 16, right: 10, bottom: si === n - 1 ? 22 : 4, left: 46 };
+    const iw = W - margin.left - margin.right;
+    const ih = panelH - margin.top - margin.bottom;
+    const gy = si * (panelH + gap) + margin.top;
+    const g  = svg.append('g').attr('transform', `translate(${margin.left},${gy})`);
+
+    const allVals = segCentroids.flatMap(c => c.centroid);
+    if (segHL) allVals.push(...segHL);
+    const yMax = Math.max(Math.abs(d3.min(allVals)), Math.abs(d3.max(allVals)), 1);
+    const xSc  = d3.scaleLinear().domain([0, 23]).range([0, iw]);
+    const ySc  = d3.scaleLinear().domain([-yMax, yMax]).range([ih, 0]);
+
+    // Dataset label
+    g.append('text').attr('x', 0).attr('y', -4)
+     .attr('fill', '#a0a0c0').style('font-size', '10px')
+     .style('text-transform', 'uppercase').style('letter-spacing', '.4px')
+     .text(label);
+
+    // Y axis
+    g.append('g').call(d3.axisLeft(ySc).ticks(3).tickFormat(d3.format('.0f')))
+     .call(ax => ax.select('.domain').remove())
+     .call(ax => ax.selectAll('line').attr('stroke', '#0f3460'))
+     .call(ax => ax.selectAll('text').attr('fill', '#718096').style('font-size', '10px'));
+
+    // X axis only on last panel
+    if (si === n - 1) {
+      g.append('g').attr('transform', `translate(0,${ih})`)
+       .call(d3.axisBottom(xSc).ticks(6).tickFormat(h => `${h}:00`))
+       .call(ax => ax.select('.domain').attr('stroke', '#0f3460'))
+       .call(ax => ax.selectAll('line').attr('stroke', '#0f3460'))
+       .call(ax => ax.selectAll('text').attr('fill', '#718096').style('font-size', '10px'));
+    }
+
+    // Zero line
+    g.append('line').attr('x1', 0).attr('x2', iw).attr('y1', ySc(0)).attr('y2', ySc(0))
+     .attr('stroke', '#4a5568').attr('stroke-width', 1).attr('stroke-dasharray', '4,3');
+
+    const line = d3.line().x((_, i) => xSc(i)).y(d => ySc(d)).curve(d3.curveCatmullRom.alpha(0.5));
+
+    segCentroids.forEach(c => {
+      g.append('path').datum(c.centroid)
+       .attr('fill', 'none')
+       .attr('stroke', clusterColor(c.cluster))
+       .attr('stroke-width', 2)
+       .attr('opacity', hiddenClusters.has(c.cluster) ? 0.08 : 0.85)
+       .attr('d', line);
+    });
+
+    if (segHL) {
+      g.append('path').datum(segHL)
+       .attr('fill', 'none').attr('stroke', '#fff')
+       .attr('stroke-width', 1.5).attr('stroke-dasharray', '5,3').attr('opacity', 0.9)
+       .attr('d', line);
+    }
+  });
+}
+
+// ── Anomaly calendar & chart ──────────────────────────────────────────────────
+function anomalyColor(score) {
+  // white-ish (normal) → deep orange-red (outlier)
+  const t = Math.min(1, score / Math.max(currentData.max_score, 0.001));
+  // interpolate: #1a1a2e (bg) → #f59e0b (mid) → #e94560 (outlier)
+  if (t < 0.5) {
+    const u = t * 2;
+    return `rgb(${Math.round(26+229*u)},${Math.round(26+133*u)},${Math.round(46+9*u)})`;
+  } else {
+    const u = (t - 0.5) * 2;
+    return `rgb(${Math.round(255-22*u)},${Math.round(159-100*u)},${Math.round(55+5*u)})`;
+  }
+}
+
+function renderAnomalyLegend() {
+  const threshold = currentData.threshold;
+  const max = currentData.max_score;
+  const steps = 6;
+  const swatches = Array.from({length: steps}, (_, i) => {
+    const s = (i / (steps - 1)) * max;
+    return `<div style="display:flex;align-items:center;gap:4px">
+      <div style="width:11px;height:11px;border-radius:2px;background:${anomalyColor(s)};
+           border:${s >= threshold ? '1.5px solid #fff' : '1px solid #333'}"></div>
+      <span style="font-size:10px;color:#a0a0c0">${s.toFixed(1)}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('legend-items').innerHTML =
+    `${swatches}
+     <span style="font-size:10px;color:#718096;margin-left:8px">
+       White border = outlier (≥ ${threshold.toFixed(2)})
+     </span>`;
+}
+
+function renderAnomalyCalendar() {
+  const byDate = {};
+  currentData.dates.forEach(v => { byDate[v.date] = v; });
+  window._calData = byDate;
+
+  const monthGroups = {};
+  currentData.dates.forEach(v => {
+    const ym = v.date.slice(0,7);
+    if (!monthGroups[ym]) monthGroups[ym] = [];
+    monthGroups[ym].push(v.date);
+  });
+
+  const DAY_SIZE = 14;
+  const parts = [];
+  Object.keys(monthGroups).sort().forEach(ym => {
+    const [yr, mo] = ym.split('-').map(Number);
+    const daysInMonth = new Date(yr, mo, 0).getDate();
+    const firstDay    = new Date(yr, mo-1, 1).getDay();
+    parts.push(`<div class="month-block"><h4>${MONTHS[mo-1]} ${yr}</h4>`);
+    const cells = [...Array(firstDay).fill(null),
+      ...Array.from({length: daysInMonth}, (_,i) =>
+        `${yr}-${String(mo).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`)];
+    for (let i = 0; i < cells.length; i += 7) {
+      parts.push('<div class="week-row">');
+      cells.slice(i, i+7).forEach(dateStr => {
+        if (!dateStr) { parts.push(`<div class="day-cell empty" style="width:${DAY_SIZE}px;height:${DAY_SIZE}px"></div>`); return; }
+        const v = byDate[dateStr];
+        if (!v) { parts.push(`<div class="day-cell" style="width:${DAY_SIZE}px;height:${DAY_SIZE}px;background:#111928"></div>`); return; }
+        const col    = anomalyColor(v.score);
+        const border = v.is_outlier ? 'border:1.5px solid #fff;' : '';
+        parts.push(
+          `<div class="day-cell ${selectedKey === dateStr ? 'selected' : ''}" data-gkey="${dateStr}"
+               title="${dateStr} (${v.dow}) score=${v.score}"
+               style="width:${DAY_SIZE}px;height:${DAY_SIZE}px;background:${col};${border}opacity:0.92"></div>`
+        );
+      });
+      parts.push('</div>');
+    }
+    parts.push('</div>');
+  });
+
+  const body = document.getElementById('calendar-body');
+  body.innerHTML = parts.join('');
+  body.onmouseover = e => { const d = e.target.closest('[data-gkey]'); if (d) showTip(e, window._calData[d.dataset.gkey]); };
+  body.onmouseout  = e => { if (!e.target.closest('[data-gkey]')) hideTip(); };
+  body.onclick     = e => { const d = e.target.closest('[data-gkey]'); if (d) selectAnomalyCell(d.dataset.gkey, window._calData[d.dataset.gkey]); };
+}
+
+function selectAnomalyCell(key, v) {
+  if (!v) return;
+  selectedKey = selectedKey === key ? null : key;
+  renderAnomalyCalendar();
+  renderAnomalyChart(selectedKey ? v.net_flow_vector : null, selectedKey ? v.expected_vector : null);
+}
+
+function renderAnomalyChart(actualVec, expectedVec) {
+  const wrap = document.getElementById('chart-svg-wrap');
+  const W = wrap.clientWidth || 260;
+  const H = wrap.clientHeight || 260;
+  d3.select(wrap).selectAll('*').remove();
+  if (!actualVec) return;
+
+  const margin = { top: 10, right: 10, bottom: 26, left: 54 };
+  const iw = W - margin.left - margin.right;
+  const ih = H - margin.top - margin.bottom;
+
+  const allVals = [...actualVec, ...expectedVec];
+  const yMax = Math.max(...allVals, 1);
+  const xSc  = d3.scaleLinear().domain([0, 23]).range([0, iw]);
+  const ySc  = d3.scaleLinear().domain([0, yMax]).range([ih, 0]);
+
+  const svg = d3.select(wrap).append('svg').attr('width', W).attr('height', H);
+  const g   = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  g.append('g').call(d3.axisLeft(ySc).ticks(5).tickFormat(d3.format('.2s')))
+   .call(ax => ax.select('.domain').remove())
+   .call(ax => ax.selectAll('line').attr('stroke','#0f3460'))
+   .call(ax => ax.selectAll('text').attr('fill','#718096').style('font-size','10px'));
+
+  g.append('g').attr('transform',`translate(0,${ih})`)
+   .call(d3.axisBottom(xSc).ticks(6).tickFormat(h => `${h}:00`))
+   .call(ax => ax.select('.domain').attr('stroke','#0f3460'))
+   .call(ax => ax.selectAll('text').attr('fill','#718096').style('font-size','10px'));
+
+  const line = d3.line().x((_,i) => xSc(i)).y(d => ySc(d)).curve(d3.curveCatmullRom.alpha(0.5));
+
+  // Expected (median for that dow) — dashed white
+  g.append('path').datum(expectedVec)
+   .attr('fill','none').attr('stroke','#a0a0c0').attr('stroke-width',1.5)
+   .attr('stroke-dasharray','5,3').attr('opacity',0.75).attr('d', line);
+
+  // Actual — solid coloured by anomaly score
+  const v = window._calData?.[selectedKey];
+  const col = v ? anomalyColor(v.score) : '#e94560';
+  g.append('path').datum(actualVec)
+   .attr('fill','none').attr('stroke', col).attr('stroke-width',2.5)
+   .attr('opacity',0.9).attr('d', line);
+
+  // Legend annotation
+  svg.append('text').attr('x', margin.left).attr('y', 10)
+   .attr('fill', col).style('font-size','10px').text('● Actual');
+  svg.append('text').attr('x', margin.left + 60).attr('y', 10)
+   .attr('fill','#a0a0c0').style('font-size','10px').text('- - Expected (dow median)');
+}
+
+// ── Grid calendar (subway: month × dow) ──────────────────────────────────────
+function renderGridCalendar() {
+  const map_ = {};
+  currentData.vectors.forEach(v => { map_[`${v.month}_${v.dow}`] = v; });
+  window._calData = map_;
+
+  const wrap = document.getElementById('cal-body-wrap');
+  const LABEL_W = 34;
+  const availW = wrap.clientWidth - LABEL_W - 4 * 8;
+  const cs = Math.max(38, Math.floor(availW / 7));
+
+  const rows = [`<table class="grid-table"><thead><tr>
+    <th style="width:${LABEL_W}px"></th>
+    ${DOW_SHORT.map(d => `<th style="width:${cs}px;font-size:12px">${d}</th>`).join('')}
+  </tr></thead><tbody>`];
+
+  for (let m = 1; m <= 12; m++) {
+    rows.push(`<tr><td class="row-label">${MONTHS[m-1]}</td>`);
+    DOW_FULL.forEach(dow => {
+      const key = `${m}_${dow}`;
+      const v = map_[key];
+      if (!v) { rows.push(`<td style="width:${cs}px;height:${cs}px;background:#111928"></td>`); return; }
+      const hidden = hiddenClusters.has(v.cluster);
+      const color  = hidden ? '#1e1e36' : clusterColor(v.cluster);
+      rows.push(
+        `<td class="${selectedKey === key ? 'selected' : ''}" data-gkey="${key}"
+             style="width:${cs}px;height:${cs}px;background:${color};opacity:${hidden?0.25:1}"></td>`
+      );
+    });
+    rows.push('</tr>');
+  }
+  rows.push('</tbody></table>');
+
+  const body = document.getElementById('calendar-body');
+  body.innerHTML = rows.join('');
+  body.onmouseover = e => { const td = e.target.closest('td[data-gkey]'); if (td) showTip(e, window._calData[td.dataset.gkey]); };
+  body.onmouseout  = e => { if (!e.target.closest('td[data-gkey]')) hideTip(); };
+  body.onclick     = e => { const td = e.target.closest('td[data-gkey]'); if (td) selectCell(td.dataset.gkey, window._calData[td.dataset.gkey]); };
+}
+
+// ── Date calendar (citibike / taxi) ──────────────────────────────────────────
+function renderDateCalendar() {
+  const byDate = {};
+  currentData.vectors.forEach(v => { byDate[v.date] = v; });
+  window._calData = byDate;
+
+  const monthGroups = {};
+  currentData.vectors.forEach(v => {
+    const ym = v.date.slice(0,7);
+    if (!monthGroups[ym]) monthGroups[ym] = [];
+    monthGroups[ym].push(v.date);
+  });
+
+  const DAY_SIZE = 14;
+  const parts = [];
+  Object.keys(monthGroups).sort().forEach(ym => {
+    const [yr, mo] = ym.split('-').map(Number);
+    const daysInMonth = new Date(yr, mo, 0).getDate();
+    const firstDay    = new Date(yr, mo-1, 1).getDay();
+    parts.push(`<div class="month-block"><h4>${MONTHS[mo-1]} ${yr}</h4>`);
+    const cells = [...Array(firstDay).fill(null),
+      ...Array.from({length: daysInMonth}, (_,i) =>
+        `${yr}-${String(mo).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`)];
+    for (let i = 0; i < cells.length; i += 7) {
+      parts.push('<div class="week-row">');
+      cells.slice(i, i+7).forEach(dateStr => {
+        if (!dateStr) { parts.push(`<div class="day-cell empty" style="width:${DAY_SIZE}px;height:${DAY_SIZE}px"></div>`); return; }
+        const v = byDate[dateStr];
+        if (!v) { parts.push(`<div class="day-cell" style="width:${DAY_SIZE}px;height:${DAY_SIZE}px;background:#1a1a2e"></div>`); return; }
+        const hidden = hiddenClusters.has(v.cluster);
+        const color  = hidden ? '#1e1e36' : clusterColor(v.cluster);
+        parts.push(
+          `<div class="day-cell ${selectedKey === dateStr ? 'selected' : ''}" data-gkey="${dateStr}"
+               style="width:${DAY_SIZE}px;height:${DAY_SIZE}px;background:${color};opacity:${hidden?0.2:0.85}"></div>`
+        );
+      });
+      parts.push('</div>');
+    }
+    parts.push('</div>');
+  });
+
+  const body = document.getElementById('calendar-body');
+  body.innerHTML = parts.join('');
+  body.onmouseover = e => { const d = e.target.closest('[data-gkey]'); if (d) showTip(e, window._calData[d.dataset.gkey]); };
+  body.onmouseout  = e => { if (!e.target.closest('[data-gkey]')) hideTip(); };
+  body.onclick     = e => { const d = e.target.closest('[data-gkey]'); if (d) selectCell(d.dataset.gkey, window._calData[d.dataset.gkey]); };
+}
+
+// ── Cell interaction ──────────────────────────────────────────────────────────
+function selectCell(key, v) {
+  if (!v) return;
+  selectedKey = selectedKey === key ? null : key;
+  renderChart(selectedKey ? v.net_flow_vector : null);
+  if (currentData.mode === 'grid') renderGridCalendar();
+  else renderDateCalendar();
+}
+
+// ── Tooltip ───────────────────────────────────────────────────────────────────
+function showMarkerTip(e, id) {
+  // Tooltip for station-mode map hover
+  if (clusteringMode !== 'station' || !currentData || currentData.mode !== 'station') return;
+  const s = currentData.stations.find(st => String(st.station_id) === id);
+  if (!s) return;
+  const ci    = s.cluster;
+  const color = clusterColor(ci);
+  const label = ci === -1 ? 'Noise' : `Cluster ${ci + 1}`;
+  document.getElementById('tooltip').innerHTML =
+    `<strong>${s.station_name}</strong><span style="color:${color}">● ${label}</span>`;
+  document.getElementById('tooltip').style.cssText +=
+    `;display:block;left:${e.clientX+12}px;top:${e.clientY-10}px`;
+}
+
+function showTip(e, v) {
+  if (!v) return;
+  // Anomaly mode tooltip
+  if (currentData && currentData.mode === 'anomaly') {
+    const col = anomalyColor(v.score);
+    const flag = v.is_outlier ? ' ⚠ outlier' : '';
+    document.getElementById('tooltip').innerHTML =
+      `<strong>${v.date} (${v.dow})</strong>
+       <span style="color:${col}">● score ${v.score.toFixed(2)}${flag}</span>`;
+    document.getElementById('tooltip').style.cssText +=
+      `;display:block;left:${e.clientX+12}px;top:${e.clientY-10}px`;
+    return;
+  }
+  const color        = clusterColor(v.cluster);
+  const label        = v.date ?? `${MONTHS[v.month-1]}, ${v.dow}`;
+  const clusterLabel = v.cluster === -1 ? 'Noise' : `Cluster ${v.cluster + 1}`;
+  let peakLine;
+  if (currentData && currentData.multi) {
+    const { segment_labels, segment_size } = currentData;
+    peakLine = segment_labels.map((sl, si) => {
+      const seg = v.net_flow_vector.slice(si * segment_size, (si + 1) * segment_size);
+      const p   = seg.reduce((b, val, i) => Math.abs(val) > Math.abs(b.val) ? {val,i} : b, {val:0,i:0});
+      return `${sl}: ${p.val>=0?'+':''}${p.val.toFixed(0)} at ${p.i}:00`;
+    }).join('<br>');
+  } else {
+    const peak = v.net_flow_vector.reduce((b,val,i) => Math.abs(val) > Math.abs(b.val) ? {val,i} : b, {val:0,i:0});
+    peakLine = `Peak: ${peak.val>=0?'+':''}${peak.val.toFixed(0)} at ${peak.i}:00`;
+  }
+  document.getElementById('tooltip').innerHTML =
+    `<strong>${label}</strong>
+     <span style="color:${color}">● ${clusterLabel}</span><br>${peakLine}`;
+  document.getElementById('tooltip').style.cssText += `;display:block;left:${e.clientX+12}px;top:${e.clientY-10}px`;
+}
+function hideTip() { document.getElementById('tooltip').style.display = 'none'; }
+
+// ── Util ──────────────────────────────────────────────────────────────────────
+function setStatus(msg) { document.getElementById('status').textContent = msg; }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadStations();
+</script>
+</body>
+</html>

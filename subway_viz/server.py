@@ -13,7 +13,9 @@ app = FastAPI()
 SUBWAY_DB = Path(__file__).parent.parent / "subway_2025"
 SUBWAY_HOURLY_DB = Path(__file__).parent.parent / "subway_hourly_2025"
 CITIBIKE_DB = Path(__file__).parent.parent / "citibike_data.duckdb"
-TAXI_PARQUET_GLOB = str(Path(__file__).parent.parent / "data/yellow_taxi_records/yellow_taxi_*.parquet")
+TAXI_PARQUET_GLOB = str(
+    Path(__file__).parent.parent / "data/yellow_taxi_records/yellow_taxi_*.parquet"
+)
 TAXI_ZONES_FILE = Path(__file__).parent.parent / "taxi_viz/zones_cache.geojson"
 
 
@@ -28,7 +30,8 @@ def get_con(dataset: str):
 @app.get("/api/subway/stations")
 def subway_stations():
     con = get_con("subway")
-    df = con.execute("""
+    df = con.execute(
+        """
         SELECT DISTINCT
             "Origin Station Complex ID" AS station_id,
             "Origin Station Complex Name" AS station_name,
@@ -37,28 +40,39 @@ def subway_stations():
         FROM subway_data
         WHERE "Origin Latitude" IS NOT NULL
         ORDER BY station_name
-    """).fetchdf()
+    """
+    ).fetchdf()
     con.close()
     return df.to_dict(orient="records")
 
 
 def _subway_where(direction, ids, month, day_of_week, hour_start, hour_end):
-    id_col = "Destination Station Complex ID" if direction == "dest" else "Origin Station Complex ID"
+    id_col = (
+        "Destination Station Complex ID"
+        if direction == "dest"
+        else "Origin Station Complex ID"
+    )
     placeholders = ",".join(str(i) for i in ids)
     clauses = [f'"{id_col}" IN ({placeholders})']
     if month is not None:
         clauses.append(f"Month = {month}")
-    if day_of_week == 'Weekday':
-        clauses.append("\"Day of Week\" IN ('Monday','Tuesday','Wednesday','Thursday','Friday')")
-    elif day_of_week == 'Weekend':
+    if day_of_week == "Weekday":
+        clauses.append(
+            "\"Day of Week\" IN ('Monday','Tuesday','Wednesday','Thursday','Friday')"
+        )
+    elif day_of_week == "Weekend":
         clauses.append("\"Day of Week\" IN ('Saturday','Sunday')")
     elif day_of_week is not None:
         clauses.append(f"\"Day of Week\" = '{day_of_week}'")
     if hour_start is not None and hour_end is not None:
         if hour_start <= hour_end:
-            clauses.append(f"\"Hour of Day\" >= {hour_start} AND \"Hour of Day\" <= {hour_end}")
+            clauses.append(
+                f'"Hour of Day" >= {hour_start} AND "Hour of Day" <= {hour_end}'
+            )
         else:
-            clauses.append(f"(\"Hour of Day\" >= {hour_start} OR \"Hour of Day\" <= {hour_end})")
+            clauses.append(
+                f'("Hour of Day" >= {hour_start} OR "Hour of Day" <= {hour_end})'
+            )
     return " AND ".join(clauses)
 
 
@@ -75,7 +89,8 @@ def subway_origins(
         return []
     con = get_con("subway")
     where = _subway_where("dest", ids, month, day_of_week, hour_start, hour_end)
-    df = con.execute(f"""
+    df = con.execute(
+        f"""
         SELECT
             "Origin Station Complex ID" AS station_id,
             "Origin Station Complex Name" AS station_name,
@@ -86,7 +101,8 @@ def subway_origins(
         WHERE {where}
         GROUP BY 1, 2, 3, 4
         ORDER BY total_ridership DESC
-    """).fetchdf()
+    """
+    ).fetchdf()
     con.close()
     return df.to_dict(orient="records")
 
@@ -104,7 +120,8 @@ def subway_destinations(
         return []
     con = get_con("subway")
     where = _subway_where("origin", ids, month, day_of_week, hour_start, hour_end)
-    df = con.execute(f"""
+    df = con.execute(
+        f"""
         SELECT
             "Destination Station Complex ID" AS station_id,
             "Destination Station Complex Name" AS station_name,
@@ -115,7 +132,8 @@ def subway_destinations(
         WHERE {where}
         GROUP BY 1, 2, 3, 4
         ORDER BY total_ridership DESC
-    """).fetchdf()
+    """
+    ).fetchdf()
     con.close()
     return df.to_dict(orient="records")
 
@@ -126,7 +144,8 @@ def subway_destinations(
 @app.get("/api/citibike/stations")
 def citibike_stations():
     con = get_con("citibike")
-    df = con.execute("""
+    df = con.execute(
+        """
         SELECT
             start_station_id AS station_id,
             start_station_name AS station_name,
@@ -137,28 +156,37 @@ def citibike_stations():
             AND start_lat IS NOT NULL
         GROUP BY 1, 2
         ORDER BY station_name
-    """).fetchdf()
+    """
+    ).fetchdf()
     con.close()
     return df.to_dict(orient="records")
 
 
-def _citibike_where(direction, ids, month, day_of_week, hour_start, hour_end, member_casual):
+def _citibike_where(
+    direction, ids, month, day_of_week, hour_start, hour_end, member_casual
+):
     id_col = "end_station_id" if direction == "dest" else "start_station_id"
     quoted = ",".join(f"'{i}'" for i in ids)
     clauses = [f"{id_col} IN ({quoted})"]
     if month is not None:
         clauses.append(f"MONTH(started_at) = {month}")
-    if day_of_week == 'Weekday':
-        clauses.append("DAYNAME(started_at) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')")
-    elif day_of_week == 'Weekend':
+    if day_of_week == "Weekday":
+        clauses.append(
+            "DAYNAME(started_at) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')"
+        )
+    elif day_of_week == "Weekend":
         clauses.append("DAYNAME(started_at) IN ('Saturday','Sunday')")
     elif day_of_week is not None:
         clauses.append(f"DAYNAME(started_at) = '{day_of_week}'")
     if hour_start is not None and hour_end is not None:
         if hour_start <= hour_end:
-            clauses.append(f"HOUR(started_at) >= {hour_start} AND HOUR(started_at) <= {hour_end}")
+            clauses.append(
+                f"HOUR(started_at) >= {hour_start} AND HOUR(started_at) <= {hour_end}"
+            )
         else:
-            clauses.append(f"(HOUR(started_at) >= {hour_start} OR HOUR(started_at) <= {hour_end})")
+            clauses.append(
+                f"(HOUR(started_at) >= {hour_start} OR HOUR(started_at) <= {hour_end})"
+            )
     if member_casual:
         clauses.append(f"member_casual = '{member_casual}'")
     return " AND ".join(clauses)
@@ -177,8 +205,11 @@ def citibike_origins(
     if not ids:
         return []
     con = get_con("citibike")
-    where = _citibike_where("dest", ids, month, day_of_week, hour_start, hour_end, member_casual)
-    df = con.execute(f"""
+    where = _citibike_where(
+        "dest", ids, month, day_of_week, hour_start, hour_end, member_casual
+    )
+    df = con.execute(
+        f"""
         SELECT
             start_station_id AS station_id,
             start_station_name AS station_name,
@@ -191,7 +222,8 @@ def citibike_origins(
             AND start_lat IS NOT NULL
         GROUP BY 1, 2
         ORDER BY total_ridership DESC
-    """).fetchdf()
+    """
+    ).fetchdf()
     con.close()
     return df.to_dict(orient="records")
 
@@ -209,8 +241,11 @@ def citibike_destinations(
     if not ids:
         return []
     con = get_con("citibike")
-    where = _citibike_where("origin", ids, month, day_of_week, hour_start, hour_end, member_casual)
-    df = con.execute(f"""
+    where = _citibike_where(
+        "origin", ids, month, day_of_week, hour_start, hour_end, member_casual
+    )
+    df = con.execute(
+        f"""
         SELECT
             end_station_id AS station_id,
             end_station_name AS station_name,
@@ -223,7 +258,8 @@ def citibike_destinations(
             AND end_lat IS NOT NULL
         GROUP BY 1, 2
         ORDER BY total_ridership DESC
-    """).fetchdf()
+    """
+    ).fetchdf()
     con.close()
     return df.to_dict(orient="records")
 
@@ -236,21 +272,23 @@ def _taxi_zone_list():
     with open(TAXI_ZONES_FILE) as f:
         gj = json.load(f)
     result = []
-    for feat in gj['features']:
-        props = feat['properties']
-        centroid = shape(feat['geometry']).centroid
-        result.append({
-            'station_id': props['LocationID'],
-            'station_name': f"{props['zone']} ({props['borough']})",
-            'lat': centroid.y,
-            'lng': centroid.x,
-        })
+    for feat in gj["features"]:
+        props = feat["properties"]
+        centroid = shape(feat["geometry"]).centroid
+        result.append(
+            {
+                "station_id": props["LocationID"],
+                "station_name": f"{props['zone']} ({props['borough']})",
+                "lat": centroid.y,
+                "lng": centroid.x,
+            }
+        )
     return result
 
 
 @lru_cache(maxsize=1)
 def _taxi_zone_lookup():
-    return {z['station_id']: z for z in _taxi_zone_list()}
+    return {z["station_id"]: z for z in _taxi_zone_list()}
 
 
 @app.get("/api/taxi/stations")
@@ -265,20 +303,26 @@ def taxi_zones():
 
 
 def _taxi_filter_clauses(month, day_of_week, hour_start, hour_end):
-    clauses = ['trip_distance > 0', 'fare_amount > 0']
+    clauses = ["trip_distance > 0", "fare_amount > 0"]
     if month is not None:
         clauses.append(f"MONTH(tpep_pickup_datetime) = {month}")
-    if day_of_week == 'Weekday':
-        clauses.append("DAYNAME(tpep_pickup_datetime) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')")
-    elif day_of_week == 'Weekend':
+    if day_of_week == "Weekday":
+        clauses.append(
+            "DAYNAME(tpep_pickup_datetime) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')"
+        )
+    elif day_of_week == "Weekend":
         clauses.append("DAYNAME(tpep_pickup_datetime) IN ('Saturday','Sunday')")
     elif day_of_week is not None:
         clauses.append(f"DAYNAME(tpep_pickup_datetime) = '{day_of_week}'")
     if hour_start is not None and hour_end is not None:
         if hour_start <= hour_end:
-            clauses.append(f"HOUR(tpep_pickup_datetime) >= {hour_start} AND HOUR(tpep_pickup_datetime) <= {hour_end}")
+            clauses.append(
+                f"HOUR(tpep_pickup_datetime) >= {hour_start} AND HOUR(tpep_pickup_datetime) <= {hour_end}"
+            )
         else:
-            clauses.append(f"(HOUR(tpep_pickup_datetime) >= {hour_start} OR HOUR(tpep_pickup_datetime) <= {hour_end})")
+            clauses.append(
+                f"(HOUR(tpep_pickup_datetime) >= {hour_start} OR HOUR(tpep_pickup_datetime) <= {hour_end})"
+            )
     return clauses
 
 
@@ -294,20 +338,24 @@ def taxi_origins(
     if not zone_ids:
         return []
     placeholders = ",".join(str(i) for i in zone_ids)
-    clauses = [f"DOLocationID IN ({placeholders})"] + _taxi_filter_clauses(month, day_of_week, hour_start, hour_end)
+    clauses = [f"DOLocationID IN ({placeholders})"] + _taxi_filter_clauses(
+        month, day_of_week, hour_start, hour_end
+    )
     where = " AND ".join(clauses)
     con = duckdb.connect()
-    df = con.execute(f"""
+    df = con.execute(
+        f"""
         SELECT PULocationID AS station_id, COUNT(*) AS total_ridership
         FROM read_parquet('{TAXI_PARQUET_GLOB}')
         WHERE {where}
         GROUP BY 1
         ORDER BY total_ridership DESC
-    """).fetchdf()
+    """
+    ).fetchdf()
     con.close()
     lookup = _taxi_zone_lookup()
     return [
-        {**lookup[int(row.station_id)], 'total_ridership': int(row.total_ridership)}
+        {**lookup[int(row.station_id)], "total_ridership": int(row.total_ridership)}
         for _, row in df.iterrows()
         if int(row.station_id) in lookup
     ]
@@ -325,20 +373,24 @@ def taxi_destinations(
     if not zone_ids:
         return []
     placeholders = ",".join(str(i) for i in zone_ids)
-    clauses = [f"PULocationID IN ({placeholders})"] + _taxi_filter_clauses(month, day_of_week, hour_start, hour_end)
+    clauses = [f"PULocationID IN ({placeholders})"] + _taxi_filter_clauses(
+        month, day_of_week, hour_start, hour_end
+    )
     where = " AND ".join(clauses)
     con = duckdb.connect()
-    df = con.execute(f"""
+    df = con.execute(
+        f"""
         SELECT DOLocationID AS station_id, COUNT(*) AS total_ridership
         FROM read_parquet('{TAXI_PARQUET_GLOB}')
         WHERE {where}
         GROUP BY 1
         ORDER BY total_ridership DESC
-    """).fetchdf()
+    """
+    ).fetchdf()
     con.close()
     lookup = _taxi_zone_lookup()
     return [
-        {**lookup[int(row.station_id)], 'total_ridership': int(row.total_ridership)}
+        {**lookup[int(row.station_id)], "total_ridership": int(row.total_ridership)}
         for _, row in df.iterrows()
         if int(row.station_id) in lookup
     ]
@@ -357,25 +409,33 @@ def subway_hourly(
     ids = [int(x) for x in ids_str.split(",") if x.strip()]
     if not ids:
         return []
-    id_col = '"Origin Station Complex ID"' if origin_ids else '"Destination Station Complex ID"'
+    id_col = (
+        '"Origin Station Complex ID"'
+        if origin_ids
+        else '"Destination Station Complex ID"'
+    )
     placeholders = ",".join(str(i) for i in ids)
     clauses = [f"{id_col} IN ({placeholders})"]
     if month is not None:
         clauses.append(f"Month = {month}")
-    if day_of_week == 'Weekday':
-        clauses.append("\"Day of Week\" IN ('Monday','Tuesday','Wednesday','Thursday','Friday')")
-    elif day_of_week == 'Weekend':
+    if day_of_week == "Weekday":
+        clauses.append(
+            "\"Day of Week\" IN ('Monday','Tuesday','Wednesday','Thursday','Friday')"
+        )
+    elif day_of_week == "Weekend":
         clauses.append("\"Day of Week\" IN ('Saturday','Sunday')")
     elif day_of_week is not None:
         clauses.append(f"\"Day of Week\" = '{day_of_week}'")
     where = " AND ".join(clauses)
     con = get_con("subway")
-    df = con.execute(f"""
+    df = con.execute(
+        f"""
         SELECT "Hour of Day" AS hour, SUM("Estimated Average Ridership") AS total
         FROM subway_data
         WHERE {where}
         GROUP BY 1 ORDER BY 1
-    """).fetchdf()
+    """
+    ).fetchdf()
     con.close()
     return df.to_dict(orient="records")
 
@@ -399,9 +459,11 @@ def citibike_hourly(
     clauses = [f"{id_col} IN ({quoted})"]
     if month is not None:
         clauses.append(f"MONTH(started_at) = {month}")
-    if day_of_week == 'Weekday':
-        clauses.append("DAYNAME(started_at) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')")
-    elif day_of_week == 'Weekend':
+    if day_of_week == "Weekday":
+        clauses.append(
+            "DAYNAME(started_at) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')"
+        )
+    elif day_of_week == "Weekend":
         clauses.append("DAYNAME(started_at) IN ('Saturday','Sunday')")
     elif day_of_week is not None:
         clauses.append(f"DAYNAME(started_at) = '{day_of_week}'")
@@ -409,12 +471,14 @@ def citibike_hourly(
         clauses.append(f"member_casual = '{member_casual}'")
     where = " AND ".join(clauses)
     con = get_con("citibike")
-    df = con.execute(f"""
+    df = con.execute(
+        f"""
         SELECT HOUR(started_at) AS hour, COUNT(*) AS total
         FROM rides
         WHERE {where}
         GROUP BY 1 ORDER BY 1
-    """).fetchdf()
+    """
+    ).fetchdf()
     con.close()
     return df.to_dict(orient="records")
 
@@ -434,23 +498,27 @@ def taxi_hourly(
         return []
     id_col = "PULocationID" if origin_ids else "DOLocationID"
     placeholders = ",".join(str(i) for i in zone_ids)
-    clauses = [f"{id_col} IN ({placeholders})", 'trip_distance > 0', 'fare_amount > 0']
+    clauses = [f"{id_col} IN ({placeholders})", "trip_distance > 0", "fare_amount > 0"]
     if month is not None:
         clauses.append(f"MONTH(tpep_pickup_datetime) = {month}")
-    if day_of_week == 'Weekday':
-        clauses.append("DAYNAME(tpep_pickup_datetime) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')")
-    elif day_of_week == 'Weekend':
+    if day_of_week == "Weekday":
+        clauses.append(
+            "DAYNAME(tpep_pickup_datetime) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')"
+        )
+    elif day_of_week == "Weekend":
         clauses.append("DAYNAME(tpep_pickup_datetime) IN ('Saturday','Sunday')")
     elif day_of_week is not None:
         clauses.append(f"DAYNAME(tpep_pickup_datetime) = '{day_of_week}'")
     where = " AND ".join(clauses)
     con = duckdb.connect()
-    df = con.execute(f"""
+    df = con.execute(
+        f"""
         SELECT HOUR(tpep_pickup_datetime) AS hour, COUNT(*) AS total
         FROM read_parquet('{TAXI_PARQUET_GLOB}')
         WHERE {where}
         GROUP BY 1 ORDER BY 1
-    """).fetchdf()
+    """
+    ).fetchdf()
     con.close()
     return df.to_dict(orient="records")
 
@@ -470,7 +538,8 @@ def _daily_matrix(dataset: str, station_id: Optional[int] = None, role: str = "e
         if station_id is not None:
             clauses.append(f"station_complex_id = '{station_id}'")
         where = "WHERE " + " AND ".join(clauses)
-        df = con.execute(f"""
+        df = con.execute(
+            f"""
             SELECT CAST(transit_timestamp AS DATE) AS date,
                    HOUR(transit_timestamp) AS hour,
                    SUM(ridership) AS ridership
@@ -478,17 +547,20 @@ def _daily_matrix(dataset: str, station_id: Optional[int] = None, role: str = "e
             {where}
             GROUP BY 1, 2
             ORDER BY 1, 2
-        """).fetchdf()
+        """
+        ).fetchdf()
     else:
         con = get_con(dataset)
-        df = con.execute("""
+        df = con.execute(
+            """
             SELECT CAST(started_at AS DATE) AS date,
                    HOUR(started_at) AS hour,
                    COUNT(*) AS ridership
             FROM rides
             GROUP BY 1, 2
             ORDER BY 1, 2
-        """).fetchdf()
+        """
+        ).fetchdf()
     con.close()
     if len(df) == 0:
         return [], []
@@ -505,6 +577,7 @@ def _daily_matrix(dataset: str, station_id: Optional[int] = None, role: str = "e
 @lru_cache(maxsize=128)
 def _linkage(dataset: str, station_id: Optional[int] = None, role: str = "either"):
     from scipy.cluster.hierarchy import linkage
+
     _, matrix = _daily_matrix(dataset, station_id, role)
     if len(matrix) < 2:
         return None
@@ -520,6 +593,7 @@ def clustering(
     role: str = "either",
 ):
     from scipy.cluster.hierarchy import fcluster
+
     if dataset not in ("subway", "citibike"):
         return {"error": "invalid dataset"}
     if role not in ("origin", "destination", "either"):
@@ -539,12 +613,14 @@ def clustering(
     result_clusters = []
     for lbl, idxs in clusters.items():
         mean_pattern = matrix[idxs].mean(axis=0).tolist()
-        result_clusters.append({
-            "id": lbl,
-            "size": len(idxs),
-            "mean_pattern": mean_pattern,
-            "dates": [dates[i] for i in idxs],
-        })
+        result_clusters.append(
+            {
+                "id": lbl,
+                "size": len(idxs),
+                "mean_pattern": mean_pattern,
+                "dates": [dates[i] for i in idxs],
+            }
+        )
     # Sort clusters by total daily ridership (so colors are consistent by magnitude)
     result_clusters.sort(key=lambda c: -sum(c["mean_pattern"]))
     # Reassign stable 1..k ids
@@ -557,10 +633,13 @@ def clustering(
         for d in c["dates"]:
             date_to_cluster[d] = c["id"]
 
+    date_totals = {dates[i]: float(matrix[i].sum()) for i in range(len(dates))}
+
     return {
         "dates": dates,
         "date_to_cluster": date_to_cluster,
         "clusters": result_clusters,
+        "date_totals": date_totals,
         "k": k,
         "max_k": len(dates),
     }
@@ -572,13 +651,16 @@ WEATHER_CSV = Path(__file__).parent.parent / "nyc_weather_data.csv"
 @lru_cache(maxsize=1)
 def _weather():
     import csv
+
     out = {}
     with open(WEATHER_CSV) as f:
         for row in csv.DictReader(f):
             try:
                 out[row["date"]] = {
                     "rain_in": float(row["rain_in"]) if row["rain_in"] else None,
-                    "temp_max_f": float(row["temp_max_f"]) if row["temp_max_f"] else None,
+                    "temp_max_f": (
+                        float(row["temp_max_f"]) if row["temp_max_f"] else None
+                    ),
                 }
             except ValueError:
                 pass
@@ -602,4 +684,5 @@ def index():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8765)

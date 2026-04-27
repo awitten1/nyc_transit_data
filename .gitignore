@@ -13,3 +13,8 @@ jeremy_stuff/.venv
 jeremy_stuff/.DS_Store
 .DS_Store
 .vscode
+mta_ridership.db
+*.csv
+nyc_weather_data
+subway_hourly_2025
+subway_hourly_2025_duckcb

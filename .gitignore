@@ -7,3 +7,7 @@ __pycache__/
 .vite
 *.duckdb
 subway_2025
+jeremy_stuff/data
+jeremy_stuff/.venv
+jeremy_stuff/.DS_Store
+.DS_Store

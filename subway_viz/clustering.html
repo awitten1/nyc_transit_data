@@ -45,6 +45,11 @@
   .legend-item { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 2px 6px; border-radius: 3px; }
   .legend-item.dim { opacity: 0.3; }
   .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+  .wv-btn {
+    background: #1a1a2e; border: 1px solid #0f3460; color: #a0a0c0;
+    font-size: 11px; padding: 3px 10px; border-radius: 3px; cursor: pointer;
+  }
+  .wv-btn.active { background: #0f3460; color: #fff; }
 </style>
 </head>
 <body>
@@ -72,18 +77,29 @@
     <h2>Average Hourly Pattern per Cluster</h2>
     <svg id="chart"></svg>
     <div class="legend" id="legend"></div>
-    <div id="weather-panel" style="display:none; margin-top:16px; padding-top:12px; border-top:1px solid #0f3460;">
-      <h2 style="font-size:13px; margin-bottom:8px;" id="weather-title">Weather — Cluster</h2>
-      <div style="display:flex; gap:20px;">
-        <div style="flex:1;">
-          <div style="font-size:11px; color:#a0a0c0; margin-bottom:4px;">Total daily rainfall (in)</div>
-          <svg id="rain-hist" width="100%" height="110"></svg>
-          <div id="rain-stats" style="font-size:11px; color:#a0a0c0; margin-top:2px;"></div>
+    <div id="weather-panel" style="margin-top:16px; padding-top:12px; border-top:1px solid #0f3460;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+        <h2 style="font-size:13px; margin:0;" id="weather-title">Weather</h2>
+        <div id="weather-view-toggle" style="display:none; gap:4px;">
+          <button class="wv-btn active" id="wv-hist" onclick="setWeatherView('hist')">Histogram</button>
+          <button class="wv-btn" id="wv-scatter" onclick="setWeatherView('scatter')">Scatter</button>
         </div>
-        <div style="flex:1;">
-          <div style="font-size:11px; color:#a0a0c0; margin-bottom:4px;">Max temperature (°F)</div>
-          <svg id="temp-hist" width="100%" height="110"></svg>
-          <div id="temp-stats" style="font-size:11px; color:#a0a0c0; margin-top:2px;"></div>
+      </div>
+      <div id="weather-placeholder" style="font-size:12px; color:#6a6a8a; padding:8px 0;">
+        Click a cluster in the legend above to compare weather distributions.
+      </div>
+      <div id="weather-charts" style="display:none;">
+        <div style="display:flex; gap:20px;">
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#a0a0c0; margin-bottom:4px;" id="left-chart-label">Total daily rainfall (in)</div>
+            <svg id="left-chart" width="100%" height="150"></svg>
+            <div id="rain-stats" style="font-size:11px; color:#a0a0c0; margin-top:2px;"></div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px; color:#a0a0c0; margin-bottom:4px;" id="right-chart-label">Max temperature (°F)</div>
+            <svg id="right-chart" width="100%" height="150"></svg>
+            <div id="temp-stats" style="font-size:11px; color:#a0a0c0; margin-top:2px;"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -98,10 +114,13 @@ const WEEKDAYS = ['M','T','W','T','F','S','S']; // Monday-first
 let currentData = null;
 let highlightClusters = new Set();
 let weatherData = null;
+let weatherView = 'hist'; // 'hist' | 'scatter'
 
 async function loadWeather() {
   const resp = await fetch('/api/weather');
   weatherData = await resp.json();
+  const keys = Object.keys(weatherData);
+  console.log(`[weather] loaded ${keys.length} dates`, keys.slice(0, 3), weatherData[keys[0]]);
 }
 
 async function loadStations() {
@@ -275,6 +294,7 @@ function renderLegend() {
 function toggleCluster(id) {
   if (highlightClusters.has(id)) highlightClusters.delete(id);
   else highlightClusters.add(id);
+  console.log(`[toggleCluster] id=${id} highlightClusters=`, [...highlightClusters]);
   renderCalendar();
   renderChart();
   renderLegend();
@@ -362,55 +382,210 @@ function renderHist(svgId, series, binEdges, fmt) {
   svg.appendChild(yb);
 }
 
+function setWeatherView(v) {
+  weatherView = v;
+  document.getElementById('wv-hist').classList.toggle('active', v === 'hist');
+  document.getElementById('wv-scatter').classList.toggle('active', v === 'scatter');
+  renderWeather();
+}
+
+function renderScatterPlot(svgId, points, xLabel) {
+  // points: [{x, y, color, label, date}]
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  const w = svg.clientWidth || 300;
+  const h = parseInt(svg.getAttribute('height')) || 160;
+  const padL = 52, padR = 12, padT = 10, padB = 36;
+  const ns = 'http://www.w3.org/2000/svg';
+  const plotW = w - padL - padR;
+  const plotH = h - padT - padB;
+
+  if (points.length === 0) return;
+
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  let xMin = Math.min(...xs), xMax = Math.max(...xs);
+  let yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const xPad = (xMax - xMin) * 0.05 || 0.5;
+  const yPad = (yMax - yMin) * 0.05 || 1;
+  xMin -= xPad; xMax += xPad;
+  yMin -= yPad; yMax += yPad;
+
+  const xScale = x => padL + ((x - xMin) / (xMax - xMin)) * plotW;
+  const yScale = y => padT + plotH - ((y - yMin) / (yMax - yMin)) * plotH;
+
+  // Grid lines (y)
+  for (let i = 0; i <= 4; i++) {
+    const y = padT + (i / 4) * plotH;
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', padL); line.setAttribute('x2', padL + plotW);
+    line.setAttribute('y1', y); line.setAttribute('y2', y);
+    line.setAttribute('stroke', '#2a3a5c'); line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+    const val = yMax - (i / 4) * (yMax - yMin);
+    const lbl = document.createElementNS(ns, 'text');
+    lbl.setAttribute('x', padL - 4); lbl.setAttribute('y', y + 4);
+    lbl.setAttribute('text-anchor', 'end');
+    lbl.setAttribute('fill', '#6a6a8a'); lbl.setAttribute('font-size', '9');
+    lbl.textContent = val >= 1e6 ? `${(val/1e6).toFixed(1)}M` : val >= 1e3 ? `${(val/1e3).toFixed(0)}k` : val.toFixed(1);
+    svg.appendChild(lbl);
+  }
+
+  // X axis ticks
+  for (let i = 0; i <= 4; i++) {
+    const x = padL + (i / 4) * plotW;
+    const val = xMin + (i / 4) * (xMax - xMin);
+    const lbl = document.createElementNS(ns, 'text');
+    lbl.setAttribute('x', x); lbl.setAttribute('y', padT + plotH + 14);
+    lbl.setAttribute('text-anchor', 'middle');
+    lbl.setAttribute('fill', '#6a6a8a'); lbl.setAttribute('font-size', '9');
+    lbl.textContent = val >= 1e3 ? `${(val/1e3).toFixed(0)}k` : val.toFixed(val < 2 ? 2 : 0);
+    svg.appendChild(lbl);
+  }
+
+  // Axis labels
+  const xAxisLbl = document.createElementNS(ns, 'text');
+  xAxisLbl.setAttribute('x', padL + plotW / 2); xAxisLbl.setAttribute('y', h - 2);
+  xAxisLbl.setAttribute('text-anchor', 'middle');
+  xAxisLbl.setAttribute('fill', '#a0a0c0'); xAxisLbl.setAttribute('font-size', '10');
+  xAxisLbl.textContent = xLabel;
+  svg.appendChild(xAxisLbl);
+
+  const yAxisLbl = document.createElementNS(ns, 'text');
+  yAxisLbl.setAttribute('transform', 'rotate(-90)');
+  yAxisLbl.setAttribute('x', -(padT + plotH / 2)); yAxisLbl.setAttribute('y', 12);
+  yAxisLbl.setAttribute('text-anchor', 'middle');
+  yAxisLbl.setAttribute('fill', '#a0a0c0'); yAxisLbl.setAttribute('font-size', '10');
+  yAxisLbl.textContent = 'Daily ridership';
+  svg.appendChild(yAxisLbl);
+
+  // Helper: fit OLS on a subset of points, draw line + R² label
+  function drawOLS(pts, stroke, strokeWidth, dasharray) {
+    const n = pts.length;
+    if (n < 2) return;
+    const mx = pts.reduce((s,p)=>s+p.x,0)/n;
+    const my = pts.reduce((s,p)=>s+p.y,0)/n;
+    const ss = pts.reduce((s,p)=>s+(p.x-mx)**2,0);
+    const sp = pts.reduce((s,p)=>s+(p.x-mx)*(p.y-my),0);
+    if (ss === 0) return;
+    const slope = sp/ss, intercept = my - slope*mx;
+    const x0 = xMin, x1 = xMax;
+    const regLine = document.createElementNS(ns, 'line');
+    regLine.setAttribute('x1', xScale(x0)); regLine.setAttribute('y1', yScale(slope*x0+intercept));
+    regLine.setAttribute('x2', xScale(x1)); regLine.setAttribute('y2', yScale(slope*x1+intercept));
+    regLine.setAttribute('stroke', stroke); regLine.setAttribute('stroke-width', strokeWidth);
+    regLine.setAttribute('stroke-dasharray', dasharray); regLine.setAttribute('opacity', '0.85');
+    svg.appendChild(regLine);
+  }
+
+  // Per-cluster regression lines (solid, cluster color)
+  const byCluster = new Map();
+  points.forEach(p => {
+    if (!byCluster.has(p.label)) byCluster.set(p.label, { pts: [], color: p.color });
+    byCluster.get(p.label).pts.push(p);
+  });
+  byCluster.forEach(({ pts, color }) => {
+    drawOLS(pts, color, '1.5', 'none');
+  });
+
+  // Overall regression line (dashed white)
+  drawOLS(points, '#ffffff', '1', '5,3');
+
+  // Dots (drawn on top of lines)
+  points.forEach(p => {
+    const circle = document.createElementNS(ns, 'circle');
+    circle.setAttribute('cx', xScale(p.x)); circle.setAttribute('cy', yScale(p.y));
+    circle.setAttribute('r', '4');
+    circle.setAttribute('fill', p.color); circle.setAttribute('opacity', '0.75');
+    const title = document.createElementNS(ns, 'title');
+    title.textContent = `${p.date}  ${xLabel}: ${p.x.toFixed(2)}  ridership: ${Math.round(p.y).toLocaleString()}`;
+    circle.appendChild(title);
+    svg.appendChild(circle);
+  });
+}
+
 function renderWeather() {
-  const panel = document.getElementById('weather-panel');
-  if (highlightClusters.size === 0 || !weatherData) {
-    panel.style.display = 'none';
+  const placeholder = document.getElementById('weather-placeholder');
+  const charts = document.getElementById('weather-charts');
+  const title = document.getElementById('weather-title');
+  const toggle = document.getElementById('weather-view-toggle');
+
+  if (highlightClusters.size === 0) {
+    placeholder.style.display = '';
+    charts.style.display = 'none';
+    toggle.style.display = 'none';
+    title.textContent = 'Weather';
     return;
   }
   const selected = currentData.clusters.filter(c => highlightClusters.has(c.id));
-  if (selected.length === 0) { panel.style.display = 'none'; return; }
-  panel.style.display = '';
-  document.getElementById('weather-title').textContent =
-    `Weather — ${selected.map(c => `Cluster ${c.id}`).join(', ')}`;
+  if (selected.length === 0) {
+    placeholder.style.display = '';
+    charts.style.display = 'none';
+    toggle.style.display = 'none';
+    return;
+  }
+  placeholder.style.display = 'none';
+  charts.style.display = '';
+  toggle.style.display = 'flex';
+  title.textContent = `Weather — ${selected.map(c => `Cluster ${c.id}`).join(', ')}`;
 
-  const rainSeries = [];
-  const tempSeries = [];
+  if (!weatherData) {
+    charts.innerHTML = '<div style="font-size:12px;color:#6a6a8a;padding:8px 0;">Weather data still loading…</div>';
+    return;
+  }
+
+  // Collect per-date data for each selected cluster
+  const rainSeries = [], tempSeries = [];
+  const rainPoints = [], tempPoints = [];  // for scatter
   const statsLines = { rain: [], temp: [] };
+  const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+
   selected.forEach(c => {
     const rains = [], temps = [];
     c.dates.forEach(d => {
       const w = weatherData[d];
       if (!w) return;
-      if (w.rain_in !== null && w.rain_in !== undefined) rains.push(w.rain_in);
-      if (w.temp_max_f !== null && w.temp_max_f !== undefined) temps.push(w.temp_max_f);
+      const ridership = currentData.date_totals?.[d];
+      const color = clusterColor(c.id);
+      if (w.rain_in !== null && w.rain_in !== undefined) {
+        rains.push(w.rain_in);
+        if (ridership !== undefined) rainPoints.push({ x: w.rain_in, y: ridership, color, label: `C${c.id}`, date: d });
+      }
+      if (w.temp_max_f !== null && w.temp_max_f !== undefined) {
+        temps.push(w.temp_max_f);
+        if (ridership !== undefined) tempPoints.push({ x: w.temp_max_f, y: ridership, color, label: `C${c.id}`, date: d });
+      }
     });
     const color = clusterColor(c.id);
-    const label = `C${c.id}`;
-    rainSeries.push({ values: rains, color, label });
-    tempSeries.push({ values: temps, color, label });
-    const mean = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+    rainSeries.push({ values: rains, color, label: `C${c.id}` });
+    tempSeries.push({ values: temps, color, label: `C${c.id}` });
     const rainTotal = rains.reduce((s,x)=>s+x, 0);
     const dry = rains.filter(r => r < 0.01).length;
-    statsLines.rain.push(
-      `<span style="color:${color}">■</span> C${c.id}: n=${rains.length}, total ${rainTotal.toFixed(1)}", avg ${mean(rains).toFixed(2)}"/day, dry ${dry}`
-    );
+    statsLines.rain.push(`<span style="color:${color}">■</span> C${c.id}: n=${rains.length}, avg ${mean(rains).toFixed(2)}"/day, dry ${dry}`);
     statsLines.temp.push(
       temps.length
-        ? `<span style="color:${color}">■</span> C${c.id}: n=${temps.length}, avg ${mean(temps).toFixed(1)}°F, range ${Math.min(...temps).toFixed(0)}–${Math.max(...temps).toFixed(0)}°F`
+        ? `<span style="color:${color}">■</span> C${c.id}: avg ${mean(temps).toFixed(1)}°F, range ${Math.min(...temps).toFixed(0)}–${Math.max(...temps).toFixed(0)}°F`
         : `<span style="color:${color}">■</span> C${c.id}: no data`
     );
   });
 
-  const rainBins = [0, 0.01, 0.1, 0.25, 0.5, 1, 2, 4];
-  const tempBins = [];
-  for (let t = 20; t <= 100; t += 10) tempBins.push(t);
-
-  renderHist('rain-hist', rainSeries, rainBins, v => v === 0 ? '0' : v.toString());
-  renderHist('temp-hist', tempSeries, tempBins, v => v.toString());
-
-  document.getElementById('rain-stats').innerHTML = statsLines.rain.join('<br>');
-  document.getElementById('temp-stats').innerHTML = statsLines.temp.join('<br>');
+  requestAnimationFrame(() => {
+    if (weatherView === 'scatter') {
+      document.getElementById('left-chart-label').textContent = 'Rainfall (in) vs. Daily Ridership';
+      document.getElementById('right-chart-label').textContent = 'Max Temp (°F) vs. Daily Ridership';
+      renderScatterPlot('left-chart', rainPoints, 'Rainfall (in)');
+      renderScatterPlot('right-chart', tempPoints, 'Max temp (°F)');
+    } else {
+      document.getElementById('left-chart-label').textContent = 'Total daily rainfall (in)';
+      document.getElementById('right-chart-label').textContent = 'Max temperature (°F)';
+      const rainBins = [0, 0.01, 0.1, 0.25, 0.5, 1, 2, 4];
+      const tempBins = [];
+      for (let t = 20; t <= 100; t += 10) tempBins.push(t);
+      renderHist('left-chart', rainSeries, rainBins, v => v === 0 ? '0' : v.toString());
+      renderHist('right-chart', tempSeries, tempBins, v => v.toString());
+    }
+    document.getElementById('rain-stats').innerHTML = statsLines.rain.join('<br>');
+    document.getElementById('temp-stats').innerHTML = statsLines.temp.join('<br>');
+  });
 }
 
 document.getElementById('k-slider').addEventListener('input', (e) => {

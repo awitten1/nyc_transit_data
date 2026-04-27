@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Subway Station Day Types and Anomalies</title>
+  <style>
+    :root {
+      --ink: #1b1916;
+      --muted: #6b6257;
+      --line: #d7cdbd;
+      --paper: rgba(255, 251, 244, 0.9);
+      --panel: rgba(255, 255, 255, 0.68);
+      --empty: #efe6d7;
+      --shadow: 0 18px 60px rgba(29, 26, 22, 0.08);
+      --sans: "Avenir Next", "Segoe UI", sans-serif;
+      --serif: "Iowan Old Style", "Palatino Linotype", serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, rgba(214, 108, 81, 0.18), transparent 24%),
+        radial-gradient(circle at left 22%, rgba(44, 84, 92, 0.16), transparent 22%),
+        linear-gradient(180deg, #f7f1e7 0%, #ece3d7 100%);
+    }
+
+    .shell {
+      width: min(1500px, calc(100vw - 28px));
+      margin: 14px auto;
+      background: var(--paper);
+      border: 1px solid rgba(215, 205, 189, 0.95);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 20px;
+      padding: 26px 28px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(30px, 4vw, 52px);
+      line-height: 0.95;
+      max-width: 14ch;
+    }
+
+    .hero p {
+      margin: 14px 0 0;
+      max-width: 66ch;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      align-content: start;
+    }
+
+    .stat, .panel, .month-card, .anomaly-item, .detail-card, .cluster-card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .stat {
+      padding: 14px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .stat-value {
+      margin-top: 6px;
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.35);
+      align-items: end;
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 220px;
+    }
+
+    label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    select {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--ink);
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 1.45fr 1fr;
+    }
+
+    .left, .right {
+      padding: 22px 28px 28px;
+    }
+
+    .right {
+      border-left: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .section-note {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .panel {
+      padding: 12px;
+    }
+
+    .calendar-year {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .month-card {
+      padding: 10px;
+    }
+
+    .month-name {
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .calendar-head, .calendar-cell {
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      border: 1px solid transparent;
+      font-size: 11px;
+    }
+
+    .calendar-head {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 10px;
+    }
+
+    .calendar-cell {
+      background: var(--empty);
+      padding: 5px;
+    }
+
+    .calendar-empty {
+      background: rgba(239, 230, 215, 0.42);
+      aspect-ratio: 1 / 1;
+    }
+
+    .calendar-date {
+      color: white;
+      aspect-ratio: 1 / 1;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: flex-start;
+      gap: 6px;
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease;
+    }
+
+    .calendar-date:hover,
+    .calendar-date.is-selected {
+      transform: translateY(-1px);
+      border-color: rgba(29, 26, 22, 0.45);
+    }
+
+    .cell-top,
+    .cell-bottom {
+      width: 100%;
+      display: flex;
+    }
+
+    .cell-top {
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .cell-bottom {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1px;
+    }
+
+    .cell-day {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .cell-metric {
+      font-size: 11px;
+      opacity: 0.92;
+      line-height: 1.05;
+    }
+
+    .detail {
+      margin-top: 22px;
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+    }
+
+    .detail-card {
+      padding: 14px;
+      min-height: 170px;
+    }
+
+    .detail-empty {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .detail-head {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .detail-swatch {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
+    }
+
+    .detail-title {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .detail-meta {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .sparkline {
+      width: 100%;
+      height: 112px;
+      display: block;
+      border: 1px solid rgba(215, 205, 189, 0.75);
+      background: linear-gradient(180deg, rgba(44, 84, 92, 0.05), rgba(255, 255, 255, 0.32));
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 12px;
+      margin-top: 12px;
+      font-size: 12px;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 10px;
+    }
+
+    .metric-value {
+      margin-top: 3px;
+      font-weight: 700;
+    }
+
+    .explain-box {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .explain-text {
+      margin-top: 6px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--ink);
+    }
+
+    .hour-table {
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .hour-row {
+      display: grid;
+      grid-template-columns: 88px 72px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.62);
+      font-size: 12px;
+    }
+
+    .hour-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 60px;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.82);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .hour-copy {
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .tag {
+      border: 1px solid var(--line);
+      padding: 4px 7px;
+      background: rgba(255, 255, 255, 0.78);
+      font-size: 11px;
+    }
+
+    .anomaly-list, .cluster-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .anomaly-item,
+    .cluster-card {
+      padding: 12px;
+    }
+
+    .anomaly-item {
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease;
+    }
+
+    .anomaly-item:hover,
+    .anomaly-item.is-selected {
+      transform: translateY(-1px);
+      border-color: rgba(29, 26, 22, 0.45);
+    }
+
+    .item-title {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .item-meta {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .item-score {
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .cluster-head {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .cluster-swatch {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
+    }
+
+    .cluster-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .cluster-meta {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .loading {
+      padding: 28px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1240px) {
+      .hero, .content {
+        grid-template-columns: 1fr;
+      }
+
+      .right {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+      }
+    }
+
+    @media (max-width: 920px) {
+      .shell {
+        width: calc(100vw - 16px);
+        margin: 8px auto;
+      }
+
+      .hero, .controls, .left, .right {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .summary {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .panel {
+        overflow-x: auto;
+      }
+
+      .calendar-year {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="hero">
+      <div>
+        <div class="eyebrow">Station Day Types</div>
+        <h1 id="hero-title">Hourly patterns and anomalies by station</h1>
+        <p id="hero-note">
+          This explorer clusters each station’s real 2025 calendar dates into day types and
+          separately ranks which dates look most unusual based on both cluster distance and
+          deviation from the station’s weekday baseline.
+        </p>
+      </div>
+      <div class="summary" id="summary"></div>
+    </div>
+
+    <div class="controls">
+      <div class="control">
+        <label for="station-select">Station</label>
+        <select id="station-select"></select>
+      </div>
+      <div class="control">
+        <label for="cluster-count-select">Cluster Count</label>
+        <select id="cluster-count-select"></select>
+      </div>
+      <div class="control">
+        <label for="color-mode">Calendar Coloring</label>
+        <select id="color-mode">
+          <option value="anomaly">Anomaly intensity</option>
+          <option value="cluster">Cluster assignment</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="loading" class="loading">Loading station anomaly output…</div>
+
+    <div id="app" class="content" hidden>
+      <div class="left">
+        <h2 id="calendar-title">Calendar</h2>
+        <p class="section-note" id="calendar-note"></p>
+        <div class="panel">
+          <div id="calendar-host"></div>
+        </div>
+
+        <div class="detail">
+          <h2>Selected Date</h2>
+          <div class="detail-card" id="detail-card">
+            <div class="detail-empty">Pick a date from the calendar or the anomaly list to inspect its hourly curve.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="right">
+        <h2>Top Anomalies</h2>
+        <p class="section-note" id="anomaly-note"></p>
+        <div class="anomaly-list" id="anomaly-list"></div>
+
+        <div style="height:20px"></div>
+
+        <h2>Discovered Day Types</h2>
+        <p class="section-note">Clusters summarize the main recurring daily patterns at the selected station.</p>
+        <div class="cluster-list" id="cluster-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const INDEX_PATH = 'data/station_daytype_anomalies/index.json';
+    const CLUSTER_COLORS = ['#204e5f', '#b85c38', '#8aa624', '#7b5ea7', '#d39b2f', '#d96c80'];
+    const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const state = {
+      index: null,
+      stationData: null,
+      stationId: null,
+      selectedProfileKey: null,
+      clusterCount: null,
+      colorMode: 'anomaly',
+    };
+
+    function formatCompact(value) {
+      return Math.round(value).toLocaleString();
+    }
+
+    function formatMiniThousands(value) {
+      return `${(Math.round((value / 1000) * 10) / 10).toFixed(1)}k`;
+    }
+
+    function hourLabel(hour) {
+      const suffix = hour >= 12 ? 'PM' : 'AM';
+      const display = hour % 12 === 0 ? 12 : hour % 12;
+      return `${display} ${suffix}`;
+    }
+
+    function revealDetail() {
+      document.getElementById('detail-card').scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+    }
+
+    function formatSigned(value, digits = 1) {
+      const rounded = Number(value).toFixed(digits);
+      return value > 0 ? `+${rounded}` : rounded;
+    }
+
+    function buildAnomalyExplanation(profile) {
+      const strongest = profile.top_anomalous_hours[0];
+      const second = profile.top_anomalous_hours[1];
+      if (!strongest) {
+        return `This date was flagged because it sits far from the station's usual learned day types, even though no single hour dominated the anomaly.`;
+      }
+
+      const hourBits = [strongest, second]
+        .filter(Boolean)
+        .map(item => `${item.label} (${item.direction})`)
+        .join(' and ');
+
+      return `This ${profile.day_of_week.toLowerCase()} was assigned to the "${profile.cluster_label}" day type, but it still stood out because ${profile.anomaly_direction} behavior was concentrated around ${hourBits}. The anomaly score combines distance from its nearest learned cluster with deviation from this station's typical ${profile.day_of_week.toLowerCase()} hourly pattern.`;
+    }
+
+    function clusterColor(clusterId) {
+      return CLUSTER_COLORS[clusterId % CLUSTER_COLORS.length];
+    }
+
+    function anomalyColor(score) {
+      const t = Math.max(0, Math.min(1, score / 100));
+      const hue = 42 - t * 36;
+      const sat = 58 + t * 28;
+      const light = 90 - t * 38;
+      return `hsl(${hue}, ${sat}%, ${light}%)`;
+    }
+
+    function textColorForBackground(mode, score, clusterId) {
+      if (mode === 'cluster') return 'white';
+      return score >= 55 ? 'white' : '#3b3028';
+    }
+
+    function getCurrentRun() {
+      const runs = state.stationData?.cluster_runs || {};
+      const available = Object.keys(runs);
+      if (!available.length) return null;
+      const wanted = String(state.clusterCount ?? state.stationData.dataset_semantics?.default_cluster_count ?? available[0]);
+      return runs[wanted] || runs[available[0]];
+    }
+
+    function getRunClusterCount() {
+      const run = getCurrentRun();
+      return run?.cluster_count ?? state.clusterCount;
+    }
+
+    function getProfileAnnotation(profileKey) {
+      const run = getCurrentRun();
+      return run?.profile_annotations?.[profileKey] || null;
+    }
+
+    function mergeProfile(profile) {
+      const annotation = getProfileAnnotation(profile.profile_key) || {};
+      return { ...profile, ...annotation };
+    }
+
+    function buildSummary() {
+      const data = state.stationData;
+      const run = getCurrentRun();
+      const topAnomalies = run?.top_anomalies || [];
+      const totals = data.profiles.map(profile => profile.total_ridership);
+      const summary = document.getElementById('summary');
+      summary.innerHTML = [
+        ['Profiles', data.profiles.length],
+        ['Avg daily ridership', formatCompact(totals.reduce((sum, value) => sum + value, 0) / totals.length)],
+        ['Top anomaly', topAnomalies[0]?.label || 'None'],
+        ['Cluster count', getRunClusterCount()],
+      ].map(([label, value]) => `
+        <div class="stat">
+          <div class="stat-label">${label}</div>
+          <div class="stat-value">${value}</div>
+        </div>
+      `).join('');
+
+      document.getElementById('hero-title').textContent = `${data.station.label} day types and anomalies`;
+      document.getElementById('hero-note').textContent = [
+        `${data.station.borough} station`,
+        data.dataset_semantics.anomaly_definition,
+      ].join(' · ');
+      document.getElementById('calendar-title').textContent = `${data.dataset_semantics.calendar_year} Calendar`;
+      document.getElementById('calendar-note').textContent =
+        state.colorMode === 'anomaly'
+          ? 'Darker cells mark dates with higher anomaly scores within this station.'
+          : 'Colors show which learned day-type cluster each date belongs to.';
+      document.getElementById('anomaly-note').textContent =
+        `Top ${topAnomalies.length} dates are ranked within ${data.station.label} by the combined anomaly score.`;
+    }
+
+    function makeSparkline(profile, color) {
+      const width = 360;
+      const height = 112;
+      const padding = 10;
+      const max = Math.max(...profile);
+      const points = profile.map((value, index) => {
+        const x = padding + index * ((width - padding * 2) / 23);
+        const y = height - padding - (value / (max || 1)) * (height - padding * 2);
+        return `${x},${y}`;
+      }).join(' ');
+      const baseline = height - padding;
+      return `
+        <svg class="sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+          <line x1="${padding}" y1="${baseline}" x2="${width - padding}" y2="${baseline}" stroke="rgba(29,26,22,0.18)" stroke-width="1"/>
+          <polyline fill="none" stroke="${color}" stroke-width="3" points="${points}"/>
+        </svg>
+      `;
+    }
+
+    function renderCalendar() {
+      const host = document.getElementById('calendar-host');
+      const byKey = Object.fromEntries(state.stationData.profiles.map(profile => [profile.profile_key, mergeProfile(profile)]));
+      const year = state.stationData.dataset_semantics.calendar_year;
+      const mode = state.colorMode;
+
+      const monthCards = [];
+      for (let month = 1; month <= 12; month += 1) {
+        const firstWeekdayIndex = (new Date(year, month - 1, 1).getDay() + 6) % 7;
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const cells = WEEKDAYS.map(day => `<div class="calendar-head">${day.slice(0, 3)}</div>`);
+
+        for (let blank = 0; blank < firstWeekdayIndex; blank += 1) {
+          cells.push('<div class="calendar-cell calendar-empty"></div>');
+        }
+
+        for (let day = 1; day <= daysInMonth; day += 1) {
+          const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const profile = byKey[key];
+          if (!profile) {
+            cells.push('<div class="calendar-cell calendar-empty"></div>');
+            continue;
+          }
+
+          const selectedClass = state.selectedProfileKey === key ? ' is-selected' : '';
+          const background = mode === 'cluster'
+            ? clusterColor(profile.cluster_id)
+            : anomalyColor(profile.anomaly_score);
+          const textColor = textColorForBackground(mode, profile.anomaly_score, profile.cluster_id);
+          const metric = mode === 'cluster'
+            ? `C${profile.cluster_id + 1}`
+            : `${Math.round(profile.anomaly_score)}`;
+
+          cells.push(`
+            <button class="calendar-cell calendar-date${selectedClass}" data-profile-key="${key}" style="background:${background};color:${textColor}">
+              <div class="cell-top">
+                <div class="cell-day">${day}</div>
+                <div class="cell-metric">${metric}</div>
+              </div>
+              <div class="cell-bottom">
+                <div class="cell-metric">${formatMiniThousands(profile.total_ridership)}</div>
+              </div>
+            </button>
+          `);
+        }
+
+        monthCards.push(`
+          <div class="month-card">
+            <div class="month-name">${MONTH_NAMES[month - 1]}</div>
+            <div class="month-grid">${cells.join('')}</div>
+          </div>
+        `);
+      }
+
+      host.innerHTML = `<div class="calendar-year">${monthCards.join('')}</div>`;
+      host.querySelectorAll('.calendar-date').forEach(button => {
+        button.onclick = () => {
+          state.selectedProfileKey = button.dataset.profileKey;
+          render();
+          revealDetail();
+        };
+      });
+    }
+
+    function renderDetail() {
+      const card = document.getElementById('detail-card');
+      if (!state.selectedProfileKey) {
+        card.innerHTML = '<div class="detail-empty">Pick a date from the calendar or the anomaly list to inspect its hourly curve.</div>';
+        return;
+      }
+
+      const baseProfile = state.stationData.profiles.find(item => item.profile_key === state.selectedProfileKey);
+      const profile = mergeProfile(baseProfile);
+      const swatchColor = state.colorMode === 'cluster'
+        ? clusterColor(profile.cluster_id)
+        : anomalyColor(profile.anomaly_score);
+      const topHours = profile.top_anomalous_hours.map(item => `
+        <div class="hour-row">
+          <div>
+            <div class="metric-value" style="margin-top:0">${item.label}</div>
+            <div class="hour-copy">z ${formatSigned(item.z_score, 1)}</div>
+          </div>
+          <div><span class="hour-badge">${item.direction}</span></div>
+          <div class="hour-copy">
+            Actual ${formatCompact(item.actual_ridership)} vs expected ${formatCompact(item.expected_ridership)}<br>
+            Difference ${formatSigned(item.actual_ridership - item.expected_ridership, 0)}
+          </div>
+        </div>
+      `).join('');
+
+      card.innerHTML = `
+        <div class="detail-head">
+          <div class="detail-swatch" style="background:${swatchColor}"></div>
+          <div>
+            <div class="detail-title">${profile.label}</div>
+            <div class="detail-meta">${profile.day_of_week} · ${profile.cluster_label} · anomaly ${profile.anomaly_score.toFixed(1)}</div>
+          </div>
+        </div>
+        ${makeSparkline(profile.hourly_ridership, clusterColor(profile.cluster_id))}
+        <div class="metric-grid">
+          <div>
+            <div class="metric-label">Total ridership</div>
+            <div class="metric-value">${formatCompact(profile.total_ridership)}</div>
+          </div>
+          <div>
+            <div class="metric-label">Peak hour</div>
+            <div class="metric-value">${hourLabel(profile.peak_hour)}</div>
+          </div>
+          <div>
+            <div class="metric-label">Cluster distance</div>
+            <div class="metric-value">${profile.cluster_distance.toFixed(3)}</div>
+          </div>
+          <div>
+            <div class="metric-label">Weekday residual</div>
+            <div class="metric-value">${profile.weekday_residual_score.toFixed(3)}</div>
+          </div>
+        </div>
+        <div class="explain-box">
+          <div class="metric-label">Why It Stands Out</div>
+          <div class="explain-text">${buildAnomalyExplanation(profile)}</div>
+        </div>
+        <div class="hour-table">${topHours || '<div class="detail-empty">No strong anomalous hours flagged for this date.</div>'}</div>
+      `;
+    }
+
+    function renderAnomalies() {
+      const list = document.getElementById('anomaly-list');
+      list.innerHTML = getCurrentRun().top_anomalies.map(item => {
+        const selectedClass = state.selectedProfileKey === item.profile_key ? ' is-selected' : '';
+        const swatch = anomalyColor(item.anomaly_score);
+        const hours = item.top_anomalous_hours.slice(0, 2).map(hour => `${hour.label} ${hour.direction}`).join(' · ');
+        return `
+          <div class="anomaly-item${selectedClass}" data-profile-key="${item.profile_key}">
+            <div class="detail-head" style="margin-bottom:8px">
+              <div class="detail-swatch" style="background:${swatch}"></div>
+              <div>
+                <div class="item-title">${item.label}</div>
+                <div class="item-meta">${item.cluster_label} · ${item.day_of_week}</div>
+              </div>
+            </div>
+            <div class="item-score">Anomaly score ${item.anomaly_score.toFixed(1)} · ${item.anomaly_direction}</div>
+            <div class="item-meta">${hours || 'No standout hours'}</div>
+          </div>
+        `;
+      }).join('');
+
+      list.querySelectorAll('.anomaly-item').forEach(item => {
+        item.onclick = () => {
+          state.selectedProfileKey = item.dataset.profileKey;
+          render();
+          revealDetail();
+        };
+      });
+    }
+
+    function renderClusters() {
+      const list = document.getElementById('cluster-list');
+      list.innerHTML = getCurrentRun().cluster_summaries.map(cluster => {
+        const color = clusterColor(cluster.cluster_id);
+        const weekdayMix = cluster.weekday_counts.map(item => `${item.day_of_week.slice(0, 3)} ${item.count}`).join(' · ');
+        const monthMix = cluster.month_counts.map(item => `${item.month_name.slice(0, 3)} ${item.count}`).join(' · ');
+        return `
+          <div class="cluster-card">
+            <div class="cluster-head">
+              <div class="cluster-swatch" style="background:${color}"></div>
+              <div>
+                <div class="cluster-title">Cluster ${cluster.cluster_id + 1}: ${cluster.label}</div>
+                <div class="cluster-meta">${cluster.size} dates · representative ${cluster.representative_date}</div>
+              </div>
+            </div>
+            ${makeSparkline(cluster.average_profile, color)}
+            <div class="metric-grid">
+              <div>
+                <div class="metric-label">Mean total</div>
+                <div class="metric-value">${formatCompact(cluster.average_total_ridership)}</div>
+              </div>
+              <div>
+                <div class="metric-label">Average peak</div>
+                <div class="metric-value">${hourLabel(Math.round(cluster.average_peak_hour))}</div>
+              </div>
+              <div>
+                <div class="metric-label">Weekday mix</div>
+                <div class="metric-value">${weekdayMix || 'None'}</div>
+              </div>
+              <div>
+                <div class="metric-label">Month mix</div>
+                <div class="metric-value">${monthMix || 'None'}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function render() {
+      buildSummary();
+      renderCalendar();
+      renderDetail();
+      renderAnomalies();
+      renderClusters();
+    }
+
+    async function loadStation(stationId) {
+      document.getElementById('loading').hidden = false;
+      document.getElementById('app').hidden = true;
+      const station = state.index.stations.find(item => String(item.station_id) === String(stationId));
+      const response = await fetch(`data/station_daytype_anomalies/${station.output_path}`);
+      state.stationData = await response.json();
+      state.stationId = String(stationId);
+      const availableCounts = state.stationData.dataset_semantics?.available_cluster_counts || [];
+      const defaultCount = state.stationData.dataset_semantics?.default_cluster_count;
+      state.clusterCount = availableCounts.includes(defaultCount) ? defaultCount : availableCounts[0];
+      const clusterSelect = document.getElementById('cluster-count-select');
+      clusterSelect.innerHTML = availableCounts.map(count => `
+        <option value="${count}">${count} clusters</option>
+      `).join('');
+      clusterSelect.value = String(state.clusterCount);
+      if (!state.selectedProfileKey || !state.stationData.profiles.some(item => item.profile_key === state.selectedProfileKey)) {
+        state.selectedProfileKey = getCurrentRun().top_anomalies[0]?.profile_key || state.stationData.profiles[0]?.profile_key || null;
+      }
+      document.getElementById('loading').hidden = true;
+      document.getElementById('app').hidden = false;
+      render();
+    }
+
+    function populateStations() {
+      const select = document.getElementById('station-select');
+      select.innerHTML = state.index.stations.map(station => `
+        <option value="${station.station_id}">${station.label}</option>
+      `).join('');
+
+      const params = new URLSearchParams(window.location.search);
+      const requestedStation = params.get('station');
+      const fallbackStation = state.index.stations[0]?.station_id;
+      const chosen = state.index.stations.some(item => String(item.station_id) === requestedStation)
+        ? requestedStation
+        : String(fallbackStation);
+      select.value = chosen;
+      state.stationId = chosen;
+
+      select.onchange = async event => {
+        state.selectedProfileKey = null;
+        await loadStation(event.target.value);
+      };
+    }
+
+    async function init() {
+      const response = await fetch(INDEX_PATH);
+      state.index = await response.json();
+      populateStations();
+      document.getElementById('cluster-count-select').onchange = event => {
+        state.clusterCount = Number(event.target.value);
+        const currentRun = getCurrentRun();
+        if (currentRun && !currentRun.profile_annotations[state.selectedProfileKey]) {
+          state.selectedProfileKey = currentRun.top_anomalies[0]?.profile_key || state.stationData.profiles[0]?.profile_key || null;
+        }
+        render();
+      };
+      document.getElementById('color-mode').value = state.colorMode;
+      document.getElementById('color-mode').onchange = event => {
+        state.colorMode = event.target.value;
+        render();
+      };
+      await loadStation(state.stationId);
+    }
+
+    init().catch(error => {
+      document.getElementById('loading').textContent = `Failed to load station anomaly output: ${error.message}`;
+    });
+  </script>
+</body>
+</html>

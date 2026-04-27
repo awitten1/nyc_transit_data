@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Penn Station Ridership Clusters</title>
+  <style>
+    :root {
+      --ink: #1d1a16;
+      --muted: #6b6257;
+      --line: #d9cfbe;
+      --paper: rgba(255, 250, 242, 0.88);
+      --panel: rgba(255, 255, 255, 0.62);
+      --empty: #efe6d7;
+      --shadow: 0 18px 60px rgba(29, 26, 22, 0.08);
+      --sans: "Avenir Next", "Segoe UI", sans-serif;
+      --serif: "Iowan Old Style", "Palatino Linotype", serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--sans);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, rgba(184, 92, 56, 0.18), transparent 24%),
+        radial-gradient(circle at left 20%, rgba(32, 78, 95, 0.14), transparent 22%),
+        linear-gradient(180deg, #f8f4ec 0%, #f0eadf 100%);
+    }
+
+    .shell {
+      width: min(1480px, calc(100vw - 32px));
+      margin: 20px auto;
+      background: var(--paper);
+      border: 1px solid rgba(217, 207, 190, 0.9);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.45fr 1fr;
+      gap: 18px;
+      padding: 26px 28px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: clamp(30px, 4vw, 52px);
+      line-height: 0.94;
+      max-width: 13ch;
+    }
+
+    .hero p {
+      margin: 14px 0 0;
+      max-width: 64ch;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      align-content: start;
+    }
+
+    .stat, .cluster-card, .detail-card, .grid-panel, .month-card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    .stat {
+      padding: 14px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .stat-value {
+      font-size: 24px;
+      margin-top: 6px;
+      font-weight: 700;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      padding: 16px 28px;
+      border-bottom: 1px solid var(--line);
+      align-items: end;
+      background: rgba(255, 255, 255, 0.35);
+    }
+
+    .control {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 180px;
+    }
+
+    label {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    select {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--ink);
+      padding: 10px 12px;
+      border-radius: 0;
+      font-size: 14px;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+    }
+
+    .grid-wrap, .clusters-wrap {
+      padding: 22px 28px 28px;
+    }
+
+    .clusters-wrap {
+      border-left: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.34);
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .section-note {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .grid-panel {
+      padding: 12px;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: 140px repeat(7, minmax(84px, 1fr));
+      gap: 6px;
+      align-items: stretch;
+    }
+
+    .matrix-cell, .calendar-cell {
+      min-height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+      text-align: center;
+      font-size: 12px;
+      border: 1px solid transparent;
+      background: var(--empty);
+    }
+
+    .matrix-head, .calendar-weekday {
+      min-height: 34px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      background: transparent;
+    }
+
+    .matrix-month {
+      justify-content: flex-start;
+      font-size: 13px;
+      font-weight: 700;
+      background: transparent;
+      color: var(--ink);
+      padding-left: 4px;
+    }
+
+    .profile-cell {
+      position: relative;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: space-between;
+      cursor: pointer;
+      color: white;
+      transition: transform 120ms ease, border-color 120ms ease;
+    }
+
+    .profile-cell:hover,
+    .profile-cell.is-selected {
+      transform: translateY(-1px);
+      border-color: rgba(29, 26, 22, 0.45);
+    }
+
+    .profile-label {
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .profile-total {
+      font-size: 10px;
+      opacity: 0.92;
+    }
+
+    .calendar-year {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .month-card {
+      padding: 10px;
+    }
+
+    .month-name {
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .month-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 4px;
+    }
+
+    .calendar-cell {
+      min-height: 54px;
+    }
+
+    .calendar-empty {
+      background: rgba(239, 230, 215, 0.42);
+    }
+
+    .calendar-profile {
+      align-items: stretch;
+      padding: 6px;
+    }
+
+    .calendar-top,
+    .calendar-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      width: 100%;
+    }
+
+    .calendar-day {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .calendar-weekday-mini {
+      font-size: 9px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+
+    .calendar-total {
+      font-size: 10px;
+      opacity: 0.92;
+    }
+
+    .cluster-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .cluster-card {
+      padding: 14px;
+    }
+
+    .cluster-head {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .cluster-swatch {
+      width: 14px;
+      height: 14px;
+      flex: 0 0 14px;
+    }
+
+    .cluster-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .cluster-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .cluster-svg {
+      width: 100%;
+      height: 108px;
+      display: block;
+      border: 1px solid rgba(217, 207, 190, 0.7);
+      background: linear-gradient(180deg, rgba(32, 78, 95, 0.04), rgba(255, 255, 255, 0.3));
+    }
+
+    .cluster-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 12px;
+      margin-top: 12px;
+      font-size: 12px;
+    }
+
+    .cluster-stat-label {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 10px;
+    }
+
+    .cluster-stat-value {
+      margin-top: 3px;
+      font-weight: 700;
+    }
+
+    .detail {
+      margin-top: 20px;
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+    }
+
+    .detail-card {
+      padding: 14px;
+      min-height: 160px;
+    }
+
+    .detail-empty {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .tag {
+      font-size: 11px;
+      border: 1px solid var(--line);
+      padding: 4px 7px;
+      background: rgba(255, 255, 255, 0.78);
+    }
+
+    .loading {
+      padding: 28px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1240px) {
+      .hero, .content {
+        grid-template-columns: 1fr;
+      }
+
+      .clusters-wrap {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .shell {
+        width: calc(100vw - 16px);
+        margin: 8px auto;
+      }
+
+      .hero, .controls, .grid-wrap, .clusters-wrap {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .summary {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .grid-panel {
+        overflow-x: auto;
+      }
+
+      .matrix {
+        width: 760px;
+      }
+
+      .calendar-year {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="hero">
+      <div>
+        <div class="eyebrow">Penn Station Cluster Explorer</div>
+        <h1 id="hero-title">Penn Station ridership clusters</h1>
+        <p id="hero-note">
+          This view clusters Penn Station daily ridership curves and can render either
+          a representative profile grid or a literal calendar, depending on the data file.
+        </p>
+      </div>
+      <div class="summary" id="summary"></div>
+    </div>
+
+    <div class="controls">
+      <div class="control">
+        <label for="measure-select">Distance Measure</label>
+        <select id="measure-select"></select>
+      </div>
+      <div class="control">
+        <label for="cluster-count-select">Cluster Count</label>
+        <select id="cluster-count-select"></select>
+      </div>
+    </div>
+
+    <div id="loading" class="loading">Loading cluster output…</div>
+
+    <div id="app" class="content" hidden>
+      <div class="grid-wrap">
+        <h2 id="grid-title">Profile Grid</h2>
+        <p class="section-note" id="grid-note"></p>
+        <div class="grid-panel">
+          <div id="grid-host"></div>
+        </div>
+
+        <div class="detail">
+          <h2>Selected Profile</h2>
+          <div class="detail-card" id="detail-card">
+            <div class="detail-empty">Pick any colored cell to inspect its hourly profile.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="clusters-wrap">
+        <h2>Cluster Profiles</h2>
+        <p class="section-note" id="cluster-note"></p>
+        <div class="cluster-list" id="cluster-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MEASURE_LABELS = {
+      dnm: 'Normalized shape (dnm)',
+      drms: 'Absolute level (drms)',
+      dsh: 'Shift-invariant shape (dsh)',
+      dma: 'Peak-only (dma)',
+    };
+    const COLORS = ['#204e5f', '#b85c38', '#8aa624', '#7b5ea7', '#d39b2f', '#d96c80', '#4f7f6d', '#6b5137'];
+    const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const DATA_PATH = new URLSearchParams(window.location.search).get('data') || 'data/penn_station_clusters.json';
+
+    const state = {
+      dataset: null,
+      measure: 'dnm',
+      clusterCount: '4',
+      selectedProfileKey: null,
+    };
+
+    function formatCompact(value) {
+      return Math.round(value).toLocaleString();
+    }
+
+    function formatMini(value) {
+      return `${(Math.round((value / 1000) * 10) / 10).toFixed(1)}k`;
+    }
+
+    function hourLabel(hour) {
+      const suffix = hour >= 12 ? 'PM' : 'AM';
+      const display = hour % 12 === 0 ? 12 : hour % 12;
+      return `${display} ${suffix}`;
+    }
+
+    function datasetLayout() {
+      return state.dataset?.dataset_semantics?.calendar_layout || 'representative_grid';
+    }
+
+    function buildSummary(dataset) {
+      const totals = dataset.profiles.map(profile => profile.total_ridership);
+      const avg = totals.reduce((sum, value) => sum + value, 0) / totals.length;
+      const max = Math.max(...totals);
+      const peakProfile = dataset.profiles.find(profile => profile.total_ridership === max);
+      const heroTitle = document.getElementById('hero-title');
+      const heroNote = document.getElementById('hero-note');
+      const summary = document.getElementById('summary');
+      const coverage =
+        dataset.dataset_semantics?.calendar_layout === 'calendar_dates'
+          ? String(dataset.dataset_semantics?.calendar_year || '')
+          : '12 × 7';
+
+      heroTitle.textContent = dataset.station?.label || 'Penn Station ridership clusters';
+      heroNote.textContent = [
+        dataset.dataset_semantics?.source,
+        dataset.paper_mapping?.profile_definition,
+      ].filter(Boolean).join('. ');
+
+      summary.innerHTML = [
+        ['Profiles', dataset.profiles.length],
+        ['Coverage', coverage],
+        ['Peak profile', peakProfile.label],
+        ['Peak total', formatCompact(max)],
+      ].map(([label, value]) => `
+        <div class="stat">
+          <div class="stat-label">${label}</div>
+          <div class="stat-value">${value}</div>
+        </div>
+      `).join('');
+    }
+
+    function populateControls(dataset) {
+      const measureSelect = document.getElementById('measure-select');
+      const countSelect = document.getElementById('cluster-count-select');
+      measureSelect.innerHTML = Object.keys(dataset.cluster_runs).map(key => `
+        <option value="${key}">${MEASURE_LABELS[key] || key}</option>
+      `).join('');
+
+      const counts = Object.keys(dataset.cluster_runs[state.measure].partitions);
+      countSelect.innerHTML = counts.map(count => `<option value="${count}">${count} clusters</option>`).join('');
+      if (!counts.includes(state.clusterCount)) {
+        state.clusterCount = counts.includes('4') ? '4' : counts[0];
+      }
+
+      measureSelect.value = state.measure;
+      countSelect.value = state.clusterCount;
+
+      measureSelect.onchange = event => {
+        state.measure = event.target.value;
+        const nextCounts = Object.keys(dataset.cluster_runs[state.measure].partitions);
+        state.clusterCount = nextCounts.includes(state.clusterCount) ? state.clusterCount : nextCounts[0];
+        populateControls(dataset);
+        render();
+      };
+
+      countSelect.onchange = event => {
+        state.clusterCount = event.target.value;
+        render();
+      };
+    }
+
+    function getPartition() {
+      return state.dataset.cluster_runs[state.measure].partitions[state.clusterCount];
+    }
+
+    function colorForCluster(clusterId) {
+      const ids = getPartition().cluster_ids;
+      const index = ids.indexOf(clusterId);
+      return COLORS[index % COLORS.length];
+    }
+
+    function displayClusterLabel(clusterId) {
+      const ids = getPartition().cluster_ids;
+      const index = ids.indexOf(clusterId);
+      return `Cluster ${index + 1}`;
+    }
+
+    function makeSparkline(profile, color) {
+      const width = 360;
+      const height = 108;
+      const padding = 10;
+      const max = Math.max(...profile);
+      const points = profile.map((value, index) => {
+        const x = padding + index * ((width - padding * 2) / 23);
+        const y = height - padding - (value / (max || 1)) * (height - padding * 2);
+        return `${x},${y}`;
+      }).join(' ');
+      const baseline = height - padding;
+      return `
+        <svg class="cluster-svg" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+          <line x1="${padding}" y1="${baseline}" x2="${width - padding}" y2="${baseline}" stroke="rgba(29,26,22,0.18)" stroke-width="1"/>
+          <polyline fill="none" stroke="${color}" stroke-width="3" points="${points}"/>
+        </svg>
+      `;
+    }
+
+    function renderClusterList() {
+      const partition = getPartition();
+      const list = document.getElementById('cluster-list');
+      const note = document.getElementById('cluster-note');
+      const measureNote = state.dataset.cluster_runs[state.measure].distance_measure_notes;
+      const unitNote =
+        datasetLayout() === 'calendar_dates'
+          ? 'Each card summarizes one cluster of literal calendar dates.'
+          : 'Each card summarizes one cluster of representative month-weekday profiles.';
+
+      note.textContent = `${measureNote} ${unitNote}`;
+
+      list.innerHTML = partition.clusters.map(cluster => {
+        const color = colorForCluster(cluster.cluster_id);
+        const weekdayMix = cluster.weekday_counts.map(item => `${item.day_of_week.slice(0, 3)} ${item.count}`).join(' · ');
+        const monthMix = cluster.month_counts.map(item => `${item.month_name.slice(0, 3)} ${item.count}`).join(' · ');
+        const dateRange = cluster.service_date_range
+          ? `${cluster.service_date_range.start} to ${cluster.service_date_range.end}`
+          : 'Representative profiles';
+        return `
+          <div class="cluster-card">
+            <div class="cluster-head">
+              <div class="cluster-swatch" style="background:${color}"></div>
+              <div>
+                <div class="cluster-title">${displayClusterLabel(cluster.cluster_id)}</div>
+                <div class="cluster-meta">${cluster.size} profiles · representative ${cluster.representative_profile.label}</div>
+              </div>
+            </div>
+            ${makeSparkline(cluster.average_profile, color)}
+            <div class="cluster-stats">
+              <div>
+                <div class="cluster-stat-label">Mean profile total</div>
+                <div class="cluster-stat-value">${formatCompact(cluster.average_total_ridership)}</div>
+              </div>
+              <div>
+                <div class="cluster-stat-label">Average peak hour</div>
+                <div class="cluster-stat-value">${hourLabel(Math.round(cluster.average_peak_hour))}</div>
+              </div>
+              <div>
+                <div class="cluster-stat-label">Weekday mix</div>
+                <div class="cluster-stat-value">${weekdayMix || 'None'}</div>
+              </div>
+              <div>
+                <div class="cluster-stat-label">Month mix</div>
+                <div class="cluster-stat-value">${monthMix || 'None'}</div>
+              </div>
+              <div>
+                <div class="cluster-stat-label">Span</div>
+                <div class="cluster-stat-value">${dateRange}</div>
+              </div>
+              <div>
+                <div class="cluster-stat-label">Total range</div>
+                <div class="cluster-stat-value">${formatCompact(cluster.member_total_ridership_range.min)} to ${formatCompact(cluster.member_total_ridership_range.max)}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderRepresentativeGrid() {
+      const partition = getPartition();
+      const byKey = Object.fromEntries(state.dataset.profiles.map(profile => [profile.profile_key, profile]));
+      const host = document.getElementById('grid-host');
+      const title = document.getElementById('grid-title');
+      const note = document.getElementById('grid-note');
+
+      title.textContent = 'Month × Weekday Grid';
+      note.textContent =
+        `${state.dataset.profiles.length} representative profiles are present: one weekday profile for each month. Colors show cluster assignments for the current cut of the hierarchy.`;
+
+      const cells = ['<div class="matrix-cell matrix-head"></div>'];
+      cells.push(...WEEKDAYS.map(day => `<div class="matrix-cell matrix-head">${day}</div>`));
+
+      for (let month = 1; month <= 12; month += 1) {
+        const monthName = MONTH_NAMES[month - 1];
+        cells.push(`<div class="matrix-cell matrix-month">${monthName}</div>`);
+        for (const dayOfWeek of WEEKDAYS) {
+          const key = `${String(month).padStart(2, '0')}-${dayOfWeek}`;
+          const profile = byKey[key];
+          if (!profile) {
+            cells.push('<div class="matrix-cell"></div>');
+            continue;
+          }
+          const clusterId = partition.assignments[key];
+          const color = colorForCluster(clusterId);
+          const selectedClass = state.selectedProfileKey === key ? ' is-selected' : '';
+          cells.push(`
+            <button class="matrix-cell profile-cell${selectedClass}" data-profile-key="${key}" style="background:${color}">
+              <div class="profile-label">${dayOfWeek.slice(0, 3)}</div>
+              <div class="profile-total">${Math.round(profile.total_ridership / 1000)}k</div>
+            </button>
+          `);
+        }
+      }
+
+      host.innerHTML = `<div class="matrix">${cells.join('')}</div>`;
+      host.querySelectorAll('.profile-cell').forEach(button => {
+        button.onclick = () => {
+          state.selectedProfileKey = button.dataset.profileKey;
+          render();
+        };
+      });
+    }
+
+    function renderCalendarGrid() {
+      const partition = getPartition();
+      const byKey = Object.fromEntries(state.dataset.profiles.map(profile => [profile.profile_key, profile]));
+      const host = document.getElementById('grid-host');
+      const title = document.getElementById('grid-title');
+      const note = document.getElementById('grid-note');
+      const year = state.dataset.dataset_semantics?.calendar_year || 2025;
+
+      title.textContent = `${year} Calendar`;
+      note.textContent =
+        `${state.dataset.profiles.length} daily profiles are present: one 24-hour profile for each actual date in ${year}. Colors show cluster assignments for the current cut of the hierarchy.`;
+
+      const monthCards = [];
+      for (let month = 1; month <= 12; month += 1) {
+        const firstWeekdayIndex = (new Date(year, month - 1, 1).getDay() + 6) % 7;
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const cells = WEEKDAYS.map(day => `<div class="calendar-cell calendar-weekday">${day.slice(0, 3)}</div>`);
+
+        for (let blank = 0; blank < firstWeekdayIndex; blank += 1) {
+          cells.push('<div class="calendar-cell calendar-empty"></div>');
+        }
+
+        for (let day = 1; day <= daysInMonth; day += 1) {
+          const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const profile = byKey[key];
+          if (!profile) {
+            cells.push('<div class="calendar-cell calendar-empty"></div>');
+            continue;
+          }
+          const clusterId = partition.assignments[key];
+          const color = colorForCluster(clusterId);
+          const selectedClass = state.selectedProfileKey === key ? ' is-selected' : '';
+          cells.push(`
+            <button class="calendar-cell profile-cell calendar-profile${selectedClass}" data-profile-key="${key}" style="background:${color}">
+              <div class="calendar-top">
+                <div class="calendar-day">${day}</div>
+                <div class="calendar-weekday-mini">${profile.day_of_week.slice(0, 3)}</div>
+              </div>
+              <div class="calendar-bottom">
+                <div class="calendar-total">${formatMini(profile.total_ridership)}</div>
+              </div>
+            </button>
+          `);
+        }
+
+        monthCards.push(`
+          <div class="month-card">
+            <div class="month-name">${MONTH_NAMES[month - 1]}</div>
+            <div class="month-grid">${cells.join('')}</div>
+          </div>
+        `);
+      }
+
+      host.innerHTML = `<div class="calendar-year">${monthCards.join('')}</div>`;
+      host.querySelectorAll('.profile-cell').forEach(button => {
+        button.onclick = () => {
+          state.selectedProfileKey = button.dataset.profileKey;
+          render();
+        };
+      });
+    }
+
+    function renderGrid() {
+      if (datasetLayout() === 'calendar_dates') {
+        renderCalendarGrid();
+        return;
+      }
+      renderRepresentativeGrid();
+    }
+
+    function renderDetail() {
+      const card = document.getElementById('detail-card');
+      if (!state.selectedProfileKey) {
+        card.innerHTML = '<div class="detail-empty">Pick any colored cell to inspect its hourly profile.</div>';
+        return;
+      }
+
+      const profile = state.dataset.profiles.find(item => item.profile_key === state.selectedProfileKey);
+      const clusterId = getPartition().assignments[state.selectedProfileKey];
+      const color = colorForCluster(clusterId);
+      const topDestinations = profile.top_destinations.map(dest => `
+        <span class="tag">${dest.destination_name} · ${formatCompact(dest.ridership)}</span>
+      `).join('');
+      const detailFallback =
+        state.dataset.dataset_semantics?.profile_detail_note || 'No top destinations found';
+      const sublabel = [profile.day_of_week, profile.service_date].filter(Boolean).join(' · ');
+
+      card.innerHTML = `
+        <div class="cluster-head">
+          <div class="cluster-swatch" style="background:${color}"></div>
+          <div>
+            <div class="cluster-title">${profile.label}</div>
+            <div class="cluster-meta">${displayClusterLabel(clusterId)} · ${sublabel || 'Representative profile'} · total ${formatCompact(profile.total_ridership)}</div>
+          </div>
+        </div>
+        ${makeSparkline(profile.hourly_ridership, color)}
+        <div class="cluster-stats">
+          <div>
+            <div class="cluster-stat-label">Peak hour</div>
+            <div class="cluster-stat-value">${hourLabel(profile.peak_hour)}</div>
+          </div>
+          <div>
+            <div class="cluster-stat-label">Cluster measure</div>
+            <div class="cluster-stat-value">${MEASURE_LABELS[state.measure]}</div>
+          </div>
+        </div>
+        <div class="tags">${topDestinations || `<span class="tag">${detailFallback}</span>`}</div>
+      `;
+    }
+
+    function render() {
+      renderClusterList();
+      renderGrid();
+      renderDetail();
+    }
+
+    async function init() {
+      const response = await fetch(DATA_PATH);
+      const dataset = await response.json();
+      state.dataset = dataset;
+      buildSummary(dataset);
+      populateControls(dataset);
+      document.getElementById('loading').hidden = true;
+      document.getElementById('app').hidden = false;
+      render();
+    }
+
+    init().catch(error => {
+      document.getElementById('loading').textContent = `Failed to load cluster output: ${error.message}`;
+    });
+  </script>
+</body>
+</html>

@@ -785,6 +785,134 @@ def taxi_hourly(
     return df.to_dict(orient="records")
 
 
+@app.get("/api/subway/pair_hourly")
+def subway_pair_hourly(
+    origin_ids: str = Query(...),
+    dest_ids: str = Query(...),
+    month: Optional[int] = None,
+    day_of_week: Optional[str] = None,
+):
+    origins = [int(x) for x in origin_ids.split(",") if x.strip()]
+    dests = [int(x) for x in dest_ids.split(",") if x.strip()]
+    if not origins or not dests:
+        return []
+    origin_placeholders = ",".join(str(i) for i in origins)
+    dest_placeholders = ",".join(str(i) for i in dests)
+    clauses = [
+        f'"Origin Station Complex ID" IN ({origin_placeholders})',
+        f'"Destination Station Complex ID" IN ({dest_placeholders})',
+    ]
+    if month is not None:
+        clauses.append(f"Month = {month}")
+    if day_of_week == "Weekday":
+        clauses.append(
+            "\"Day of Week\" IN ('Monday','Tuesday','Wednesday','Thursday','Friday')"
+        )
+    elif day_of_week == "Weekend":
+        clauses.append("\"Day of Week\" IN ('Saturday','Sunday')")
+    elif day_of_week is not None:
+        clauses.append(f"\"Day of Week\" = '{day_of_week}'")
+    where = " AND ".join(clauses)
+    con = get_con("subway")
+    df = con.execute(
+        f"""
+        SELECT "Hour of Day" AS hour, SUM("Estimated Average Ridership") AS total
+        FROM subway_data
+        WHERE {where}
+        GROUP BY 1 ORDER BY 1
+    """
+    ).fetchdf()
+    con.close()
+    return df.to_dict(orient="records")
+
+
+@app.get("/api/citibike/pair_hourly")
+def citibike_pair_hourly(
+    origin_ids: str = Query(...),
+    dest_ids: str = Query(...),
+    month: Optional[int] = None,
+    day_of_week: Optional[str] = None,
+    member_casual: Optional[str] = None,
+):
+    origins = [x.strip() for x in origin_ids.split(",") if x.strip()]
+    dests = [x.strip() for x in dest_ids.split(",") if x.strip()]
+    if not origins or not dests:
+        return []
+    origin_quoted = ",".join(f"'{i}'" for i in origins)
+    dest_quoted = ",".join(f"'{i}'" for i in dests)
+    clauses = [
+        f"start_station_id IN ({origin_quoted})",
+        f"end_station_id IN ({dest_quoted})",
+    ]
+    if month is not None:
+        clauses.append(f"MONTH(started_at) = {month}")
+    if day_of_week == "Weekday":
+        clauses.append(
+            "DAYNAME(started_at) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')"
+        )
+    elif day_of_week == "Weekend":
+        clauses.append("DAYNAME(started_at) IN ('Saturday','Sunday')")
+    elif day_of_week is not None:
+        clauses.append(f"DAYNAME(started_at) = '{day_of_week}'")
+    if member_casual:
+        clauses.append(f"member_casual = '{member_casual}'")
+    where = " AND ".join(clauses)
+    con = get_con("citibike")
+    df = con.execute(
+        f"""
+        SELECT HOUR(started_at) AS hour, COUNT(*) AS total
+        FROM rides
+        WHERE {where}
+        GROUP BY 1 ORDER BY 1
+    """
+    ).fetchdf()
+    con.close()
+    return df.to_dict(orient="records")
+
+
+@app.get("/api/taxi/pair_hourly")
+def taxi_pair_hourly(
+    origin_ids: str = Query(...),
+    dest_ids: str = Query(...),
+    month: Optional[int] = None,
+    day_of_week: Optional[str] = None,
+):
+    origins = [int(x) for x in origin_ids.split(",") if x.strip()]
+    dests = [int(x) for x in dest_ids.split(",") if x.strip()]
+    if not origins or not dests:
+        return []
+    origin_placeholders = ",".join(str(i) for i in origins)
+    dest_placeholders = ",".join(str(i) for i in dests)
+    clauses = [
+        f"PULocationID IN ({origin_placeholders})",
+        f"DOLocationID IN ({dest_placeholders})",
+        "trip_distance > 0",
+        "fare_amount > 0",
+    ]
+    if month is not None:
+        clauses.append(f"MONTH(tpep_pickup_datetime) = {month}")
+    if day_of_week == "Weekday":
+        clauses.append(
+            "DAYNAME(tpep_pickup_datetime) IN ('Monday','Tuesday','Wednesday','Thursday','Friday')"
+        )
+    elif day_of_week == "Weekend":
+        clauses.append("DAYNAME(tpep_pickup_datetime) IN ('Saturday','Sunday')")
+    elif day_of_week is not None:
+        clauses.append(f"DAYNAME(tpep_pickup_datetime) = '{day_of_week}'")
+    where = " AND ".join(clauses)
+    con = duckdb.connect()
+    df = con.execute(
+        f"""
+        SELECT HOUR(tpep_pickup_datetime) AS hour, COUNT(*) AS total
+        FROM read_parquet('{TAXI_PARQUET_GLOB}')
+        WHERE {where}
+        GROUP BY 1 ORDER BY 1
+    """
+    ).fetchdf()
+    con.close()
+    return df.to_dict(orient="records")
+
+
 # ── Clustering (system-wide daily patterns) ──
 
 
@@ -797,8 +925,8 @@ def _daily_matrix(
     normalize: bool = False,
 ):
     """Return (dates, matrix) where matrix is [n_days, 24] of ridership.
-    station_id=None means system-wide.
-    role in {'origin', 'destination', 'either'} — only used when station_id is set.
+    station_ids=() means system-wide; otherwise sum across the listed station ids.
+    role in {'origin', 'destination', 'either'} — reserved for future use.
     """
     if dataset == "subway":
         con = duckdb.connect(str(SUBWAY_HOURLY_DB), read_only=True)

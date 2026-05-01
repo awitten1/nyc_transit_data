@@ -18,8 +18,8 @@ Open http://localhost:8765
 
 ## Usage
 
-- **Left map**: drag to select destination stations (toggle Select/Pan mode in toolbar)
-- **Right map**: shows origin stations sized and colored by ridership volume
+- **Left map**: drag to select origin stations (toggle Select/Pan mode in toolbar)
+- **Right map**: shows destination stations sized and colored by ridership volume
 - Click individual stations to toggle selection
 - Use filters (month, day, hour range) to narrow the data
-- Switch "Select Destinations" / "Select Origins" to reverse the direction
+- Switch "Select Origins" / "Select Destinations" to reverse the direction

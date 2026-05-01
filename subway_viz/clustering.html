@@ -768,7 +768,7 @@ function selectedStationSearchLabel() {
 
 function openDateSearch(dateStr) {
   const stations = selectedStationSearchLabel();
-  const query = `What are the events like near ${stations} on ${dateStr}?`;
+  const query = `What are the events and weather like near ${stations} on ${dateStr}?`;
   pendingDateSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
   const embeddedUrl = `https://www.google.com/search?igu=1&q=${encodeURIComponent(query)}`;
   document.getElementById('date-search-body').innerHTML = `

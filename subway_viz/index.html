@@ -112,10 +112,27 @@
   #delta-bar { flex-shrink: 0; }
   #maps-container { flex: 1; min-height: 0; display: flex; }
   #chart-container {
-    flex-shrink: 0; height: 185px; background: #16213e;
+    flex-shrink: 0; min-height: 185px; background: #16213e;
     border-top: 1px solid #0f3460; padding: 6px 16px 4px;
+    display: grid; grid-template-columns: minmax(300px, 1fr) minmax(300px, 1fr) minmax(300px, 1fr);
+    gap: 14px; align-items: stretch;
   }
-  #hourly-svg { display: block; width: 100%; }
+  #hourly-svg, #ranked-results-svg { display: block; width: 100%; }
+  #journey-panel {
+    border-left: 1px solid #0f3460; padding-left: 14px;
+    display: grid; grid-template-columns: 1fr;
+    gap: 10px; min-width: 0;
+  }
+  .journey-title { font-size: 11px; fill: #a0a0c0; }
+  #journey-empty {
+    grid-column: 1 / -1; align-self: center; color: #6a6a8a;
+    font-size: 12px; line-height: 1.4;
+  }
+  #pair-bar-svg { width: 100%; display: block; }
+  @media (max-width: 980px) {
+    #chart-container { grid-template-columns: 1fr; }
+    #journey-panel { border-left: none; border-top: 1px solid #0f3460; padding-left: 0; padding-top: 8px; }
+  }
   #status {
     flex-shrink: 0; padding: 5px 20px; background: #16213e;
     border-top: 1px solid #0f3460; font-size: 12px; color: #a0a0c0;
@@ -152,8 +169,8 @@
     <div class="group">
       <label>Mode:</label>
       <div class="mode-toggle">
-        <button id="mode-dest" class="active" onclick="setMode('dest')">Destinations</button>
-        <button id="mode-origin" onclick="setMode('origin')">Origins</button>
+        <button id="mode-dest" onclick="setMode('dest')">Destinations</button>
+        <button id="mode-origin" class="active" onclick="setMode('origin')">Origins</button>
       </div>
     </div>
     <div class="group">
@@ -276,18 +293,23 @@
 
 <div id="maps-container">
   <div class="map-panel">
-    <div class="map-label select" id="left-label">Select Destinations — drag to select</div>
+    <div class="map-label select" id="left-label">Select Origins — drag to select</div>
     <div id="map-left" class="map"></div>
   </div>
   <div class="divider"></div>
   <div class="map-panel">
-    <div class="map-label result" id="right-label">Origins will appear here</div>
+    <div class="map-label result" id="right-label">Destinations will appear here</div>
     <div id="map-right" class="map"></div>
   </div>
 </div>
 
 <div id="chart-container">
   <svg id="hourly-svg"></svg>
+  <svg id="ranked-results-svg"></svg>
+  <div id="journey-panel">
+    <div id="journey-empty">Click a result on the right map to inspect its O-D hourly volume profile.</div>
+    <svg id="pair-bar-svg" style="display:none"></svg>
+  </div>
 </div>
 
 <div id="status">
@@ -354,12 +376,13 @@ let taxiGeoJson = null;                   // raw GeoJSON for polygon rendering
 // Namespace helpers — keys are "ds:id" to avoid collisions across datasets
 function dsKey(ds, id) { return `${ds}:${id}`; }
 function dsOfKey(key) { return key.slice(0, key.indexOf(':')); }
-let mode = 'dest'; // 'dest' = select destinations, show origins. 'origin' = reverse.
+let mode = 'origin'; // 'dest' = select destinations, show origins. 'origin' = select origins, show destinations.
 let selectedIds = new Set();
 let excludedIds = new Set();
 let stationMarkersLeft = {};
 let resultMarkersRight = [];
 let lastResultData = [];
+let selectedPairDetail = null;
 let selectionRect = null;
 let dragStart = null;
 
@@ -544,8 +567,9 @@ mapLeft.on('mouseup', (e) => {
 // Fetch results from all active datasets in parallel
 let fetchController = null;
 async function fetchResults() {
-  if (selectedIds.size === 0) { clearResults(); renderHourlyChart(null); return; }
+  if (selectedIds.size === 0) { clearResults(); renderHourlyChart(null); renderRankedResults(null); clearPairDetail(); return; }
   fetchHourlyData();
+  if (selectedPairDetail) fetchPairHourlyData();
   if (deltaMode) { fetchDeltaResults(); return; }
 
   if (fetchController) fetchController.abort();
@@ -578,6 +602,9 @@ function clearResults() {
   resultMarkersRight.forEach(m => mapRight.removeLayer(m));
   resultMarkersRight = [];
   lastResultData = [];
+  selectedPairDetail = null;
+  clearPairDetail();
+  renderRankedResults(null);
   document.getElementById('status-right').textContent = 'Total: —';
   document.getElementById('right-label').textContent =
     mode === 'dest' ? 'Origins will appear here' : 'Destinations will appear here';
@@ -597,13 +624,14 @@ function renderResults(data) {
   const visible = data.filter(d => !excludedIds.has(eKey(d)));
   const maxRidership = visible.length > 0 ? Math.max(...visible.map(d => d.total_ridership)) : 1;
   const totalRidership = visible.reduce((sum, d) => sum + d.total_ridership, 0);
+  renderRankedResults(visible);
 
   data.forEach(d => {
     const k = eKey(d);
     const excluded = excludedIds.has(k);
     const ratio = excluded ? 0 : d.total_ridership / maxRidership;
     const status = excluded ? ' (excluded)' : '';
-    const tooltipHtml = `<b>${d.station_name}</b>${status}<br>${d._dataset === 'taxi' ? 'Trips' : 'Ridership'}: ${Math.round(d.total_ridership).toLocaleString()}<br><i>Click to ${excluded ? 'include' : 'exclude'}</i>`;
+    const tooltipHtml = `<b>${d.station_name}</b>${status}<br>${d._dataset === 'taxi' ? 'Trips' : 'Ridership'}: ${Math.round(d.total_ridership).toLocaleString()}<br><i>Click for O-D profile; Option-click to ${excluded ? 'include' : 'exclude'}</i>`;
 
     let marker;
     if (d._dataset === 'taxi' && taxiGeoJson) {
@@ -631,9 +659,14 @@ function renderResults(data) {
       marker.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -radius] });
     }
 
-    marker.on('click', () => {
-      if (excludedIds.has(k)) excludedIds.delete(k); else excludedIds.add(k);
-      renderResults(lastResultData);
+    marker.on('click', (ev) => {
+      const original = ev.originalEvent || {};
+      if (original.altKey || original.metaKey || original.ctrlKey) {
+        if (excludedIds.has(k)) excludedIds.delete(k); else excludedIds.add(k);
+        renderResults(lastResultData);
+        return;
+      }
+      selectPairDetail(d);
     });
     marker.addTo(mapRight);
     resultMarkersRight.push(marker);
@@ -667,6 +700,7 @@ function setMode(newMode) {
 
 function clearSelection() {
   selectedIds.clear();
+  selectedPairDetail = null;
   if (selectionRect) { mapLeft.removeLayer(selectionRect); selectionRect = null; }
   updateLeftMarkerStyles();
   clearResults();
@@ -1183,6 +1217,7 @@ function renderDeltaResults(dataA, dataB) {
   resultMarkersRight.forEach(m => mapRight.removeLayer(m));
   resultMarkersRight = [];
   lastResultData = { _delta: true, dataA, dataB };
+  renderRankedResults(null);
 
   const mapA = new Map(dataA.map(d => [dsKey(d._dataset, d.station_id), d]));
   const mapB = new Map(dataB.map(d => [dsKey(d._dataset, d.station_id), d]));
@@ -1267,6 +1302,167 @@ function interpolateDeltaColor(ratio) {
   }
 }
 
+// ── Volume-based OD-pair journey view ──
+
+function selectedIdsForDataset(ds) {
+  return [...selectedIds]
+    .filter(key => dsOfKey(key) === ds)
+    .map(key => key.slice(key.indexOf(':') + 1));
+}
+
+function selectedStationNamesForDataset(ds) {
+  const selected = new Set(selectedIdsForDataset(ds).map(String));
+  return (allStationsPerDataset[ds] || [])
+    .filter(s => selected.has(String(s.station_id)))
+    .map(s => s.station_name);
+}
+
+function selectPairDetail(result) {
+  const selectedForDataset = selectedIdsForDataset(result._dataset);
+  if (selectedForDataset.length === 0) {
+    clearPairDetail('Select at least one matching origin/destination first.');
+    return;
+  }
+  const selectedNames = selectedStationNamesForDataset(result._dataset);
+  selectedPairDetail = {
+    dataset: result._dataset,
+    resultId: String(result.station_id),
+    resultName: result.station_name,
+    selectedIds: selectedForDataset,
+    selectedNames,
+    modeAtSelection: mode,
+  };
+  fetchPairHourlyData();
+}
+
+async function fetchPairHourlyData() {
+  if (!selectedPairDetail) return;
+  const detail = selectedPairDetail;
+  const selectedForDataset = selectedIdsForDataset(detail.dataset);
+  if (selectedForDataset.length === 0) {
+    clearPairDetail('The selected O-D profile no longer matches the current selection.');
+    return;
+  }
+  detail.selectedIds = selectedForDataset;
+  detail.selectedNames = selectedStationNamesForDataset(detail.dataset);
+
+  const p = new URLSearchParams();
+  if (mode === 'dest') {
+    p.set('origin_ids', detail.resultId);
+    p.set('dest_ids', selectedForDataset.join(','));
+  } else {
+    p.set('origin_ids', selectedForDataset.join(','));
+    p.set('dest_ids', detail.resultId);
+  }
+  const month = document.getElementById('month').value;
+  const day = document.getElementById('day').value;
+  const mc = document.getElementById('member-casual').value;
+  if (month) p.set('month', month);
+  if (day) p.set('day_of_week', day);
+  if (detail.dataset === 'citibike' && mc) p.set('member_casual', mc);
+
+  try {
+    const resp = await fetch(`/api/${detail.dataset}/pair_hourly?${p}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const hours = new Array(24).fill(0);
+    data.forEach(d => { hours[d.hour] = d.total || 0; });
+    renderPairDetail(detail, hours);
+  } catch (e) {
+    console.error(e);
+    clearPairDetail('Could not load this O-D profile for the current dataset.');
+  }
+}
+
+function clearPairDetail(message) {
+  document.getElementById('journey-empty').style.display = '';
+  document.getElementById('journey-empty').textContent =
+    message || 'Click a result on the right map to inspect its O-D hourly volume profile.';
+  d3.select('#pair-bar-svg').style('display', 'none').selectAll('*').remove();
+}
+
+function renderPairDetail(detail, hours) {
+  const empty = document.getElementById('journey-empty');
+  empty.style.display = 'none';
+  d3.select('#pair-bar-svg').style('display', 'block');
+
+  const fromLabel = mode === 'dest'
+    ? detail.resultName
+    : (detail.selectedNames.length === 1 ? detail.selectedNames[0] : `${detail.selectedNames.length} selected origins`);
+  const toLabel = mode === 'dest'
+    ? (detail.selectedNames.length === 1 ? detail.selectedNames[0] : `${detail.selectedNames.length} selected destinations`)
+    : detail.resultName;
+  const total = d3.sum(hours);
+  const peakHour = d3.greatestIndex(hours);
+  const maxValue = d3.max(hours) || 1;
+
+  renderPairBars(hours, {
+    title: `${fromLabel} -> ${toLabel}`,
+    subtitle: `${detail.dataset} O-D volume: ${Math.round(total).toLocaleString()} total, peak ${String(peakHour).padStart(2,'0')}:00`,
+    maxValue,
+  });
+}
+
+function renderPairBars(hours, meta) {
+  const svgEl = document.getElementById('pair-bar-svg');
+  const svg = d3.select(svgEl);
+  svg.selectAll('*').remove();
+  const W = Math.max(320, svgEl.clientWidth || svgEl.getBoundingClientRect().width || svgEl.parentElement.clientWidth);
+  const H = 175;
+  svg.attr('width', W).attr('height', H);
+  const margin = { top: 36, right: 8, bottom: 26, left: 42 };
+  const width = W - margin.left - margin.right;
+  const height = H - margin.top - margin.bottom;
+
+  svg.append('text')
+    .attr('x', 0).attr('y', 12)
+    .attr('class', 'journey-title')
+    .text(meta.title);
+  svg.append('text')
+    .attr('x', 0).attr('y', 27)
+    .attr('fill', '#6a6a8a').attr('font-size', '10px')
+    .text(meta.subtitle);
+
+  const data = d3.range(24).map(hour => ({ hour, total: hours[hour] || 0 }));
+  const x = d3.scaleBand().domain(d3.range(24)).range([0, width]).padding(0.16);
+  const y = d3.scaleLinear().domain([0, meta.maxValue]).nice().range([height, 0]);
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  g.append('g')
+    .call(d3.axisLeft(y).ticks(3).tickSize(-width).tickFormat(''))
+    .call(ax => {
+      ax.select('.domain').remove();
+      ax.selectAll('.tick line').attr('stroke', '#2a3a5e').attr('stroke-dasharray', '3,3');
+    });
+  g.selectAll('rect')
+    .data(data)
+    .join('rect')
+    .attr('x', d => x(d.hour))
+    .attr('y', d => y(d.total))
+    .attr('width', x.bandwidth())
+    .attr('height', d => height - y(d.total))
+    .attr('fill', '#e94560')
+    .attr('opacity', d => d.total ? 0.35 + 0.55 * (d.total / meta.maxValue) : 0.2)
+    .append('title')
+    .text(d => `${String(d.hour).padStart(2,'0')}:00 - ${Math.round(d.total).toLocaleString()}`);
+
+  g.append('g')
+    .attr('transform', `translate(0,${height})`)
+    .call(d3.axisBottom(x).tickValues([0, 6, 12, 18, 23]).tickFormat(h => `${h}`))
+    .call(ax => {
+      ax.select('.domain').attr('stroke', '#2a3a5e');
+      ax.selectAll('.tick line').attr('stroke', '#2a3a5e');
+      ax.selectAll('.tick text').attr('fill', '#a0a0c0').attr('font-size', '9px');
+    });
+  g.append('g')
+    .call(d3.axisLeft(y).ticks(3).tickFormat(d3.format('.2~s')))
+    .call(ax => {
+      ax.select('.domain').remove();
+      ax.selectAll('.tick line').remove();
+      ax.selectAll('.tick text').attr('fill', '#a0a0c0').attr('font-size', '9px');
+    });
+}
+
 // Re-query on filter change (A filters + B filters in delta mode)
 ['month', 'day', 'hour-start', 'hour-end', 'member-casual',
  'month-b', 'day-b', 'hour-start-b', 'hour-end-b'].forEach(id => {
@@ -1317,7 +1513,7 @@ function renderHourlyChart(hourData) {
 
   const containerH = 185;
   const margin = { top: 22, right: 16, bottom: 28, left: 48 };
-  const W = svgEl.parentElement.clientWidth - 32;
+  const W = svgEl.clientWidth || svgEl.getBoundingClientRect().width || (svgEl.parentElement.clientWidth - 32);
   const H = containerH - 8; // leave room for container padding
   svg.attr('width', W).attr('height', H);
 
@@ -1431,6 +1627,99 @@ function renderHourlyChart(hourData) {
     .attr('text-anchor', 'middle')
     .attr('fill', '#606080').attr('font-size', '9px')
     .text('ridership');
+}
+
+// ── Ranked destinations/origins chart ──
+
+function renderRankedResults(results) {
+  const svgEl = document.getElementById('ranked-results-svg');
+  if (!svgEl) return;
+
+  const svg = d3.select('#ranked-results-svg');
+  svg.selectAll('*').remove();
+
+  const containerH = 185;
+  const W = svgEl.clientWidth || svgEl.getBoundingClientRect().width || svgEl.parentElement.clientWidth;
+  const H = containerH - 8;
+  svg.attr('width', W).attr('height', H);
+
+  const margin = { top: 22, right: 18, bottom: 14, left: 116 };
+  const width = Math.max(10, W - margin.left - margin.right);
+  const height = H - margin.top - margin.bottom;
+  const label = mode === 'dest' ? 'Top Origins' : 'Top Destinations';
+
+  svg.append('text')
+    .attr('x', 0)
+    .attr('y', 13)
+    .attr('fill', '#a0a0c0')
+    .attr('font-size', '11px')
+    .text(results && results.length ? `${label} by Volume` : `${label} — select a station or region`);
+
+  if (!results || results.length === 0) return;
+
+  const top = [...results]
+    .sort((a, b) => b.total_ridership - a.total_ridership)
+    .slice(0, 10);
+  const maxValue = d3.max(top, d => d.total_ridership) || 1;
+  const y = d3.scaleBand()
+    .domain(top.map((_, i) => i))
+    .range([0, height])
+    .padding(0.22);
+  const x = d3.scaleLinear()
+    .domain([0, maxValue])
+    .nice()
+    .range([0, width]);
+  const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+  g.selectAll('.rank-bg')
+    .data(top)
+    .join('rect')
+    .attr('class', 'rank-bg')
+    .attr('x', 0)
+    .attr('y', (_, i) => y(i))
+    .attr('width', width)
+    .attr('height', y.bandwidth())
+    .attr('fill', '#111928')
+    .attr('rx', 2);
+
+  g.selectAll('.rank-bar')
+    .data(top)
+    .join('rect')
+    .attr('class', 'rank-bar')
+    .attr('x', 0)
+    .attr('y', (_, i) => y(i))
+    .attr('width', d => x(d.total_ridership))
+    .attr('height', y.bandwidth())
+    .attr('fill', d => d._dataset === 'taxi' ? '#ffc857' : d._dataset === 'citibike' ? '#55efc4' : '#00d2ff')
+    .attr('opacity', 0.82)
+    .attr('rx', 2)
+    .append('title')
+    .text(d => `${d.station_name} - ${Math.round(d.total_ridership).toLocaleString()}`);
+
+  g.selectAll('.rank-label')
+    .data(top)
+    .join('text')
+    .attr('class', 'rank-label')
+    .attr('x', -8)
+    .attr('y', (_, i) => y(i) + y.bandwidth() / 2 + 3)
+    .attr('text-anchor', 'end')
+    .attr('fill', '#a0a0c0')
+    .attr('font-size', '9px')
+    .text(d => {
+      const prefix = top.length > 1 && activeDatasets.size > 1 ? `${d._dataset}: ` : '';
+      const name = `${prefix}${d.station_name}`;
+      return name.length > 21 ? name.slice(0, 20) + '...' : name;
+    });
+
+  g.selectAll('.rank-value')
+    .data(top)
+    .join('text')
+    .attr('class', 'rank-value')
+    .attr('x', d => Math.min(width - 4, x(d.total_ridership) + 5))
+    .attr('y', (_, i) => y(i) + y.bandwidth() / 2 + 3)
+    .attr('fill', '#e0e0e0')
+    .attr('font-size', '9px')
+    .text(d => d3.format('.2~s')(d.total_ridership));
 }
 
 // ── Tab switching ──

@@ -13,13 +13,43 @@
   a { color: #00d2ff; }
 
   #controls {
-    display: flex; align-items: center; gap: 20px;
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
     padding: 12px 16px; background: #16213e; border: 1px solid #0f3460;
     border-radius: 6px; margin-bottom: 16px;
   }
   #controls label { font-size: 13px; color: #a0a0c0; }
   #controls input[type=range] { width: 240px; }
   #k-display { font-size: 14px; font-weight: 600; color: #e94560; width: 30px; text-align: center; }
+  #station-picker { position: relative; }
+  #station-search {
+    background:#1a1a2e;color:#e0e0e0;border:1px solid #0f3460;
+    padding:4px 8px;border-radius:4px;min-width:240px;font-size:12px;
+  }
+  #station-suggest {
+    position: absolute; top: 100%; left: 0; right: 0; margin-top: 2px;
+    background: #0f1626; border: 1px solid #0f3460; border-radius: 4px;
+    max-height: 240px; overflow-y: auto; z-index: 100; display: none;
+  }
+  #station-suggest div {
+    padding: 5px 8px; font-size: 12px; cursor: pointer; color: #cfcfe0;
+  }
+  #station-suggest div:hover { background: #16213e; }
+  #station-chips { display: flex; flex-wrap: wrap; gap: 6px; max-width: 520px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #0f3460; color: #fff; font-size: 11px;
+    padding: 3px 6px 3px 8px; border-radius: 12px;
+  }
+  .chip button {
+    background: transparent; border: none; color: #fff; cursor: pointer;
+    font-size: 13px; line-height: 1; padding: 0; opacity: 0.7;
+  }
+  .chip button:hover { opacity: 1; }
+  .chip-clear {
+    font-size: 11px; color: #a0a0c0; background: transparent;
+    border: 1px solid #0f3460; padding: 3px 8px; border-radius: 12px; cursor: pointer;
+  }
+  .chip-clear:hover { color: #fff; border-color: #e94560; }
 
   #main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
   .panel {
@@ -74,10 +104,12 @@
 <div class="sub">Daily system-wide ridership patterns clustered via Ward's method. <a href="/">← Back to map</a></div>
 
 <div id="controls">
-  <label>Station:</label>
-  <select id="station-select" style="background:#1a1a2e;color:#e0e0e0;border:1px solid #0f3460;padding:4px 8px;border-radius:4px;min-width:260px;">
-    <option value="">System-wide (all stations)</option>
-  </select>
+  <label>Stations:</label>
+  <div id="station-picker">
+    <input id="station-search" type="text" placeholder="Search stations to add… (empty = system-wide)" autocomplete="off">
+    <div id="station-suggest"></div>
+  </div>
+  <div id="station-chips"></div>
   <label>Clusters:</label>
   <input type="range" id="k-slider" min="2" max="12" value="5">
   <span id="k-display">5</span>
@@ -130,6 +162,8 @@ const WEEKDAYS = ['M','T','W','T','F','S','S']; // Monday-first
 let currentData = null;
 let highlightClusters = new Set();
 let weatherData = null;
+let allStations = [];
+let selectedStations = []; // [{station_id, station_name}]
 
 const tip = {
   el: null,
@@ -166,27 +200,79 @@ async function loadWeather() {
 
 async function loadStations() {
   const resp = await fetch('/api/subway/stations');
-  const stations = await resp.json();
-  const sel = document.getElementById('station-select');
-  stations.forEach(s => {
-    const opt = document.createElement('option');
-    opt.value = s.station_id;
-    opt.textContent = s.station_name;
-    sel.appendChild(opt);
+  allStations = await resp.json();
+}
+
+function renderChips() {
+  const wrap = document.getElementById('station-chips');
+  wrap.innerHTML = '';
+  selectedStations.forEach(s => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.innerHTML = `${s.station_name}<button title="Remove">×</button>`;
+    chip.querySelector('button').addEventListener('click', () => {
+      selectedStations = selectedStations.filter(x => x.station_id !== s.station_id);
+      renderChips();
+      highlightClusters = new Set();
+      load(parseInt(document.getElementById('k-slider').value));
+      renderWeather();
+    });
+    wrap.appendChild(chip);
   });
+  if (selectedStations.length > 0) {
+    const clear = document.createElement('button');
+    clear.className = 'chip-clear';
+    clear.textContent = 'Clear all';
+    clear.addEventListener('click', () => {
+      selectedStations = [];
+      renderChips();
+      highlightClusters = new Set();
+      load(parseInt(document.getElementById('k-slider').value));
+      renderWeather();
+    });
+    wrap.appendChild(clear);
+  }
+}
+
+function renderSuggestions(query) {
+  const box = document.getElementById('station-suggest');
+  const q = query.trim().toLowerCase();
+  if (!q) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  const taken = new Set(selectedStations.map(s => s.station_id));
+  const matches = allStations
+    .filter(s => !taken.has(s.station_id) && s.station_name.toLowerCase().includes(q))
+    .slice(0, 30);
+  if (matches.length === 0) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.innerHTML = '';
+  matches.forEach(s => {
+    const item = document.createElement('div');
+    item.textContent = s.station_name;
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      selectedStations.push({ station_id: s.station_id, station_name: s.station_name });
+      document.getElementById('station-search').value = '';
+      box.style.display = 'none';
+      renderChips();
+      highlightClusters = new Set();
+      load(parseInt(document.getElementById('k-slider').value));
+      renderWeather();
+    });
+    box.appendChild(item);
+  });
+  box.style.display = 'block';
 }
 
 async function load(k) {
-  const stationId = document.getElementById('station-select').value;
   const params = new URLSearchParams({ k });
-  if (stationId) {
-    params.set('station_id', stationId);
+  if (selectedStations.length > 0) {
+    params.set('station_ids', selectedStations.map(s => s.station_id).join(','));
   }
   const resp = await fetch(`/api/subway/clustering?${params}`);
   currentData = await resp.json();
-  const scope = stationId
-    ? document.getElementById('station-select').selectedOptions[0].textContent
-    : 'System-wide';
+  let scope;
+  if (selectedStations.length === 0) scope = 'System-wide';
+  else if (selectedStations.length === 1) scope = selectedStations[0].station_name;
+  else scope = `${selectedStations.length} stations aggregated`;
   document.getElementById('status').textContent =
     `${scope} • ${currentData.dates.length} sampled days • ${currentData.clusters.length} clusters`;
   renderCalendar();
@@ -644,18 +730,23 @@ document.getElementById('k-slider').addEventListener('change', (e) => {
   renderWeather();
 });
 
-document.getElementById('station-select').addEventListener('change', () => {
-  highlightClusters = new Set();
-  load(parseInt(document.getElementById('k-slider').value));
-  renderWeather();
+const searchInput = document.getElementById('station-search');
+searchInput.addEventListener('input', (e) => renderSuggestions(e.target.value));
+searchInput.addEventListener('focus', (e) => renderSuggestions(e.target.value));
+searchInput.addEventListener('blur', () => {
+  setTimeout(() => { document.getElementById('station-suggest').style.display = 'none'; }, 150);
 });
 
 loadWeather();
 loadStations().then(() => {
   const urlParams = new URLSearchParams(window.location.search);
-  const stationId = urlParams.get('station_id');
-  if (stationId) {
-    document.getElementById('station-select').value = stationId;
+  const ids = (urlParams.get('station_ids') || urlParams.get('station_id') || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  if (ids.length) {
+    const lookup = new Map(allStations.map(s => [String(s.station_id), s]));
+    selectedStations = ids.map(id => lookup.get(String(id))).filter(Boolean)
+      .map(s => ({ station_id: s.station_id, station_name: s.station_name }));
+    renderChips();
   }
   load(5);
 });

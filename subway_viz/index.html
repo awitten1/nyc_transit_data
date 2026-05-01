@@ -683,15 +683,7 @@ function goToClusters() {
     return;
   }
 
-  if (subwayIds.length > 1) {
-    window.alert('Select exactly one subway station to open its cluster view.');
-    return;
-  }
-
-  const params = new URLSearchParams({
-    station_id: subwayIds[0],
-    role: mode === 'dest' ? 'destination' : 'origin',
-  });
+  const params = new URLSearchParams({ station_ids: subwayIds.join(',') });
   window.location.href = `/clustering?${params.toString()}`;
 }
 

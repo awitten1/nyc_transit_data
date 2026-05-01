@@ -527,16 +527,17 @@ def taxi_hourly(
 
 
 @lru_cache(maxsize=128)
-def _daily_matrix(dataset: str, station_id: Optional[int] = None, role: str = "either"):
+def _daily_matrix(dataset: str, station_ids: tuple = (), role: str = "either"):
     """Return (dates, matrix) where matrix is [n_days, 24] of ridership.
-    station_id=None means system-wide.
-    role in {'origin', 'destination', 'either'} — only used when station_id is set.
+    station_ids=() means system-wide; otherwise sum across the listed station ids.
+    role in {'origin', 'destination', 'either'} — reserved for future use.
     """
     if dataset == "subway":
         con = duckdb.connect(str(SUBWAY_HOURLY_DB), read_only=True)
         clauses = ["YEAR(transit_timestamp) = 2025"]
-        if station_id is not None:
-            clauses.append(f"station_complex_id = '{station_id}'")
+        if station_ids:
+            quoted = ",".join(f"'{sid}'" for sid in station_ids)
+            clauses.append(f"station_complex_id IN ({quoted})")
         where = "WHERE " + " AND ".join(clauses)
         df = con.execute(
             f"""
@@ -575,10 +576,10 @@ def _daily_matrix(dataset: str, station_id: Optional[int] = None, role: str = "e
 
 
 @lru_cache(maxsize=128)
-def _linkage(dataset: str, station_id: Optional[int] = None, role: str = "either"):
+def _linkage(dataset: str, station_ids: tuple = (), role: str = "either"):
     from scipy.cluster.hierarchy import linkage
 
-    _, matrix = _daily_matrix(dataset, station_id, role)
+    _, matrix = _daily_matrix(dataset, station_ids, role)
     if len(matrix) < 2:
         return None
     Z = linkage(matrix, method="ward")
@@ -589,7 +590,7 @@ def _linkage(dataset: str, station_id: Optional[int] = None, role: str = "either
 def clustering(
     dataset: str,
     k: int = 5,
-    station_id: Optional[int] = None,
+    station_ids: Optional[str] = None,
     role: str = "either",
 ):
     from scipy.cluster.hierarchy import fcluster
@@ -598,10 +599,11 @@ def clustering(
         return {"error": "invalid dataset"}
     if role not in ("origin", "destination", "either"):
         role = "either"
-    dates, matrix = _daily_matrix(dataset, station_id, role)
+    ids_tuple = tuple(s.strip() for s in (station_ids or "").split(",") if s.strip())
+    dates, matrix = _daily_matrix(dataset, ids_tuple, role)
     if len(dates) < 2:
         return {"dates": [], "date_to_cluster": {}, "clusters": [], "k": 0, "max_k": 0}
-    Z = _linkage(dataset, station_id, role)
+    Z = _linkage(dataset, ids_tuple, role)
     k = max(1, min(k, len(dates)))
     labels = fcluster(Z, t=k, criterion="maxclust")
 

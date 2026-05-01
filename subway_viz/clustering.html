@@ -3,45 +3,117 @@
 <head>
 <meta charset="UTF-8">
 <title>Cluster & Calendar — Subway</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         background: #1a1a2e; color: #e0e0e0; min-height: 100vh; padding: 20px; }
+         background: #1a1a2e; color: #e0e0e0; height: 100vh; padding: 14px 20px;
+         overflow: hidden; display: flex; flex-direction: column; }
   h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-  .sub { font-size: 12px; color: #a0a0c0; margin-bottom: 16px; }
+  .sub { font-size: 12px; color: #a0a0c0; margin-bottom: 12px; flex-shrink: 0; }
   a { color: #00d2ff; }
 
   #controls {
-    display: flex; align-items: center; gap: 20px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
     padding: 12px 16px; background: #16213e; border: 1px solid #0f3460;
-    border-radius: 6px; margin-bottom: 16px;
+    border-radius: 6px; margin-bottom: 12px; flex-shrink: 0;
   }
   #controls label { font-size: 13px; color: #a0a0c0; }
   #controls input[type=range] { width: 240px; }
   #k-display { font-size: 14px; font-weight: 600; color: #e94560; width: 30px; text-align: center; }
+  .segmented {
+    display: inline-flex; border: 1px solid #0f3460; border-radius: 4px; overflow: hidden;
+  }
+  .segmented button {
+    background: #1a1a2e; border: 0; border-right: 1px solid #0f3460;
+    color: #a0a0c0; font-size: 12px; padding: 5px 9px; cursor: pointer;
+  }
+  .segmented button:last-child { border-right: 0; }
+  .segmented button.active { background: #0f3460; color: #fff; }
 
-  #main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  #main {
+    display: grid; grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(190px, auto); gap: 16px; flex: 1; min-height: 0;
+  }
+  #main.calendar-layout .viz-panel,
+  #main.map-layout .viz-panel { grid-column: 1; grid-row: 1 / span 2; }
+  #main.calendar-layout .chart-panel,
+  #main.map-layout .chart-panel { grid-column: 2; grid-row: 1; }
+  #main.calendar-layout .weather-panel-wrap,
+  #main.map-layout .weather-panel-wrap { grid-column: 2; grid-row: 2; }
   .panel {
     background: #16213e; border: 1px solid #0f3460; border-radius: 6px; padding: 16px;
+    min-height: 0; overflow: hidden; display: flex; flex-direction: column;
   }
-  .panel h2 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #a0a0c0; }
+  .panel-scroll { min-height: 0; overflow: hidden; padding-right: 2px; }
+  .viz-panel .panel-scroll { flex: 1; display: flex; flex-direction: column; }
+  .panel h2 { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: #a0a0c0; }
 
-  #calendar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-  .month { font-size: 11px; }
-  .month-name { font-weight: 600; margin-bottom: 4px; color: #cfcfe0; }
+  #calendar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px 8px; }
+  #main.calendar-layout #calendar {
+    --cal-day-size: 14px;
+    flex: 1; height: auto; min-height: 0; grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 6px 8px;
+  }
+  #tree-view { display: none; height: min(46vh, 430px); min-height: 300px; }
+  #main.map-layout #tree-view { height: 100%; min-height: 0; }
+  #tree-svg { width: 100%; height: 100%; display: block; cursor: grab; }
+  #tree-svg:active { cursor: grabbing; }
+  #cluster-map-view { display: none; height: min(46vh, 430px); min-height: 300px; }
+  #main.map-layout #cluster-map-view { height: 100%; min-height: 0; }
+  #cluster-map-svg { width: 100%; height: 100%; display: block; }
+  .tree-controls {
+    display: none; gap: 4px; margin-left: auto;
+  }
+  .tree-btn {
+    background: #1a1a2e; border: 1px solid #0f3460; color: #a0a0c0;
+    font-size: 11px; padding: 3px 8px; border-radius: 3px; cursor: pointer;
+  }
+  .tree-btn:hover { background: #0f3460; color: #fff; }
+  .view-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .month { font-size: 10px; min-width: 0; min-height: 0; overflow: hidden; }
+  .month-name { font-weight: 600; margin-bottom: 2px; color: #cfcfe0; }
   .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-  .weekday-label { text-align: center; font-size: 9px; color: #6a6a8a; padding: 1px 0; }
+  .weekday-label { text-align: center; font-size: 8px; color: #6a6a8a; padding: 0; }
   .day {
     aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-    font-size: 9px; border-radius: 2px; cursor: pointer; background: #0f1626;
-    color: #555; transition: transform 0.1s;
+    font-size: 8px; border-radius: 2px; cursor: pointer; background: #0f1626;
+    color: #555; transition: transform 0.1s; position: relative; overflow: hidden;
   }
   .day.has-data { color: #fff; font-weight: 500; }
+  .day.dimmed-date { background-color: #1f2a44 !important; color: #8b90a8; }
   .day:hover { transform: scale(1.2); z-index: 10; box-shadow: 0 0 4px rgba(255,255,255,0.5); }
   .day.highlighted { outline: 2px solid #fff; }
+  #main.calendar-layout .month { display: flex; flex-direction: column; }
+  #main.calendar-layout .month-name { font-size: 9px; margin-bottom: 1px; }
+  #main.calendar-layout .month-grid {
+    min-height: 0; grid-template-columns: repeat(7, var(--cal-day-size)); gap: 1px;
+    align-content: start; justify-content: center;
+  }
+  #main.calendar-layout .weekday-label {
+    width: var(--cal-day-size); height: 8px; line-height: 8px; font-size: 7px;
+  }
+  #main.calendar-layout .calendar-blank,
+  #main.calendar-layout .day {
+    width: var(--cal-day-size); height: var(--cal-day-size); aspect-ratio: auto;
+    min-width: 0; min-height: 0; font-size: clamp(6px, calc(var(--cal-day-size) * 0.42), 8px);
+  }
+  #main.calendar-layout .event-dot {
+    width: clamp(2px, calc(var(--cal-day-size) * 0.18), 3.5px);
+    height: clamp(2px, calc(var(--cal-day-size) * 0.18), 3.5px);
+  }
+  #main.calendar-layout .weather-badge {
+    width: clamp(6px, calc(var(--cal-day-size) * 0.38), 8px);
+    height: clamp(6px, calc(var(--cal-day-size) * 0.38), 8px);
+  }
+  #main.calendar-layout .day:hover { transform: none; box-shadow: 0 0 0 1px rgba(255,255,255,0.85); }
 
-  #chart { width: 100%; height: 420px; }
+  #chart { width: 100%; height: min(42vh, 390px); flex-shrink: 0; overflow: visible; }
+  #main.calendar-layout #chart,
+  #main.map-layout #chart { height: min(42vh, 390px); }
   .legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; font-size: 11px; }
   .legend-item { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 2px 6px; border-radius: 3px; }
   .legend-item.dim { opacity: 0.3; }
@@ -65,6 +137,198 @@
     font-size: 11px; padding: 3px 10px; border-radius: 3px; cursor: pointer;
   }
   .wv-btn.active { background: #0f3460; color: #fff; }
+  #events-panel { margin-top: 10px; }
+  #events-summary { font-size: 11px; color: #a0a0c0; margin-bottom: 4px; }
+  .event-card {
+    border: 1px solid #0f3460; background: #0f1626; border-radius: 4px;
+    padding: 6px 8px; font-size: 11px; line-height: 1.3;
+  }
+  .event-title { color: #e0e0e0; font-weight: 600; margin-bottom: 2px; }
+  .event-meta { color: #a0a0c0; font-size: 10px; }
+  .event-genre { color: #00d2ff; }
+  .event-empty { font-size: 12px; color: #6a6a8a; padding: 8px 0; }
+  .event-dots {
+    position: absolute; left: 2px; right: 2px; bottom: 1px;
+    display: flex; align-items: center; justify-content: center; gap: 1px;
+    pointer-events: none;
+  }
+  .event-dot {
+    width: 3px; height: 3px; border-radius: 50%;
+    border: 1px solid rgba(15,22,38,0.75);
+    flex: 0 0 auto;
+  }
+  .weather-badge {
+    position: absolute; top: 0; right: 0;
+    width: 7px; height: 7px; padding: 0; border-radius: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: transparent; font-size: 0; line-height: 1;
+    border: 0; pointer-events: none;
+    clip-path: polygon(100% 0, 0 0, 100% 100%);
+  }
+  .event-more {
+    font-size: 6px; line-height: 1; color: #fff; margin-left: 1px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  }
+  .calendar-legend {
+    display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: 10px; margin-top: 7px; font-size: 10px; color: #a0a0c0;
+  }
+  .legend-group {
+    border: 1px solid rgba(15,52,96,0.8); border-radius: 4px;
+    padding: 6px 8px; background: rgba(15,22,38,0.45);
+    min-width: 0;
+  }
+  .legend-title {
+    color: #e0e0e0; font-size: 10px; font-weight: 700; margin-bottom: 5px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .legend-note { color: #6a6a8a; font-weight: 500; }
+  .legend-items { display: flex; flex-wrap: wrap; gap: 7px 9px; }
+  .legend-item-inline { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .legend-weather-swatch {
+    width: 10px; height: 10px; clip-path: polygon(100% 0, 0 0, 100% 100%);
+    display: inline-block; flex: 0 0 auto;
+  }
+  .event-controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+    margin: 6px 0; padding: 6px; border: 1px solid #0f3460;
+    border-radius: 4px; background: #0f1626;
+  }
+  .event-control-label { font-size: 11px; color: #a0a0c0; }
+  .event-control-label input[type=range] { width: 100px; vertical-align: middle; }
+  .event-check {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; color: #cfcfe0; cursor: pointer;
+  }
+  .event-check input { accent-color: #00d2ff; }
+  #event-radius-value { color: #e94560; font-weight: 600; min-width: 36px; display: inline-block; }
+  #weather-panel { min-height: 0; overflow: auto; }
+  .events-open-btn {
+    background: #1a1a2e; border: 1px solid #0f3460; color: #e0e0e0;
+    font-size: 12px; padding: 6px 10px; border-radius: 4px; cursor: pointer;
+    min-width: 110px;
+  }
+  .events-open-btn:hover { background: #0f3460; }
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    z-index: 1500; display: none; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .modal-backdrop.show { display: flex; }
+  .events-modal {
+    width: min(900px, 94vw); max-height: min(760px, 90vh);
+    background: #16213e; border: 1px solid #0f3460; border-radius: 6px;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.55);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .events-modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; border-bottom: 1px solid #0f3460;
+  }
+  .events-modal-title { font-size: 15px; font-weight: 600; color: #e0e0e0; }
+  .events-close-btn {
+    background: transparent; border: 1px solid #0f3460; color: #a0a0c0;
+    border-radius: 4px; padding: 4px 8px; cursor: pointer;
+  }
+  .events-close-btn:hover { color: #fff; background: #0f3460; }
+  .events-modal-body { padding: 14px 16px; min-height: 0; display: flex; flex-direction: column; }
+  .events-search {
+    background: #0f1626; color: #e0e0e0; border: 1px solid #0f3460;
+    border-radius: 4px; padding: 6px 8px; font-size: 12px; min-width: 220px;
+  }
+  .events-modal-list {
+    min-height: 0; overflow: auto; display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 8px; margin-top: 10px;
+  }
+  .confirm-modal {
+    width: min(560px, 92vw); max-height: min(620px, 88vh);
+    background: #16213e; border: 1px solid #0f3460; border-radius: 6px;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.55);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .search-modal {
+    width: min(1040px, 94vw); height: min(760px, 88vh);
+    background: #16213e; border: 1px solid #0f3460; border-radius: 6px;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.55);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .confirm-body { padding: 14px 16px; overflow: auto; color: #cfcfe0; font-size: 12px; line-height: 1.45; }
+  .search-body { padding: 12px 14px; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+  .search-frame {
+    width: 100%; flex: 1; min-height: 0; border: 1px solid #0f3460;
+    border-radius: 4px; background: #0f1626;
+  }
+  .search-query {
+    color: #e0e0e0; font-size: 12px; line-height: 1.35;
+    padding: 8px 10px; border: 1px solid #0f3460; border-radius: 4px;
+    background: #0f1626;
+  }
+  .confirm-stations { margin-top: 10px; display: grid; gap: 4px; }
+  .confirm-station { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid rgba(15,52,96,0.65); padding: 4px 0; }
+  .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid #0f3460; }
+  .confirm-btn {
+    background: #1a1a2e; border: 1px solid #0f3460; color: #e0e0e0;
+    font-size: 12px; padding: 6px 10px; border-radius: 4px; cursor: pointer;
+  }
+  .confirm-btn.primary { background: #0f3460; color: #fff; }
+  .confirm-btn:hover { border-color: #00d2ff; }
+  .station-pick-btn {
+    background: #1a1a2e; border: 1px solid #0f3460; color: #e0e0e0;
+    font-size: 12px; padding: 6px 10px; border-radius: 4px; cursor: pointer;
+    min-width: 260px; text-align: left;
+  }
+  .station-pick-btn:hover { background: #0f3460; }
+  .station-picker-modal {
+    width: min(1040px, 94vw); height: min(720px, 88vh);
+    background: #16213e; border: 1px solid #0f3460; border-radius: 6px;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.55);
+    display: grid; grid-template-rows: auto 1fr auto; overflow: hidden;
+  }
+  .station-picker-body {
+    min-height: 0; display: grid; grid-template-columns: 340px 1fr; gap: 0;
+  }
+  .station-picker-sidebar {
+    min-height: 0; border-right: 1px solid #0f3460; padding: 12px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .station-search {
+    background: #0f1626; color: #e0e0e0; border: 1px solid #0f3460;
+    border-radius: 4px; padding: 7px 9px; font-size: 12px;
+  }
+  .station-results { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 4px; }
+  .station-result {
+    background: #0f1626; border: 1px solid transparent; color: #cfcfe0;
+    border-radius: 4px; padding: 7px 8px; font-size: 12px; cursor: pointer;
+    text-align: left;
+  }
+  .station-result:hover { border-color: #0f3460; }
+  .station-result.selected { border-color: #00d2ff; background: #0f3460; color: #fff; }
+  .station-picker-map { min-height: 0; height: 100%; background: #0f1626; }
+  .station-picker-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 12px 16px; border-top: 1px solid #0f3460;
+  }
+  .station-picker-count { font-size: 12px; color: #a0a0c0; }
+  .leaflet-container { background: #0f1626; }
+  .leaflet-control-zoom a { background: #16213e !important; color: #e0e0e0 !important; border-color: #0f3460 !important; }
+  @media (max-width: 980px) {
+    body { overflow: auto; height: auto; min-height: 100vh; }
+    #main { grid-template-columns: 1fr; overflow: visible; }
+    #main.calendar-layout .viz-panel,
+    #main.calendar-layout .chart-panel,
+    #main.calendar-layout .weather-panel-wrap,
+    #main.map-layout .viz-panel,
+    #main.map-layout .chart-panel,
+    #main.map-layout .weather-panel-wrap {
+      grid-column: 1; grid-row: auto;
+    }
+    .panel { overflow: visible; }
+    .panel-scroll { overflow: visible; }
+    .station-picker-body { grid-template-columns: 1fr; grid-template-rows: 260px 1fr; }
+    .station-picker-sidebar { border-right: 0; border-bottom: 1px solid #0f3460; order: 2; }
+    .station-picker-map { order: 1; }
+  }
 </style>
 </head>
 <body>
@@ -75,28 +339,77 @@
 
 <div id="controls">
   <label>Station:</label>
-  <select id="station-select" style="background:#1a1a2e;color:#e0e0e0;border:1px solid #0f3460;padding:4px 8px;border-radius:4px;min-width:260px;">
+  <button type="button" class="station-pick-btn" id="open-station-picker">System-wide (all stations)</button>
+  <select id="station-select" style="display:none;">
     <option value="">System-wide (all stations)</option>
   </select>
+  <button class="events-open-btn" id="open-events-btn">Events</button>
   <label>Clusters:</label>
-  <input type="range" id="k-slider" min="2" max="12" value="5">
+  <input type="range" id="k-slider" min="2" max="30" value="5">
   <span id="k-display">5</span>
+  <label>Mode:</label>
+  <div class="segmented" id="cluster-mode">
+    <button type="button" class="active" data-mode="volume">Volume</button>
+    <button type="button" data-mode="normalized">Normalized</button>
+  </div>
   <div style="margin-left:auto; font-size:12px; color:#a0a0c0;" id="status"></div>
 </div>
 
-<div id="main">
-  <div class="panel">
-    <h2>Calendar (click a day to highlight its cluster)</h2>
-    <div id="calendar"></div>
+<div id="main" class="calendar-layout">
+  <div class="panel viz-panel">
+    <div class="panel-scroll">
+      <div class="view-toggle">
+        <h2 id="left-view-title">Calendar (click a day to highlight its cluster)</h2>
+        <div class="segmented" id="left-view-toggle">
+          <button type="button" class="active" data-view="calendar">Calendar</button>
+          <button type="button" data-view="map">Cluster Map</button>
+        </div>
+        <div class="tree-controls" id="tree-controls">
+          <button type="button" class="tree-btn" id="tree-zoom-in">+</button>
+          <button type="button" class="tree-btn" id="tree-zoom-out">-</button>
+          <button type="button" class="tree-btn" id="tree-zoom-reset">Reset</button>
+          <button type="button" class="tree-btn" id="tree-cut-reset">Reset cut</button>
+        </div>
+      </div>
+      <div id="calendar"></div>
+      <div id="tree-view"><svg id="tree-svg"></svg></div>
+      <div id="cluster-map-view"><svg id="cluster-map-svg"></svg></div>
+      <div id="events-panel">
+        <div class="calendar-legend">
+          <div class="legend-group">
+            <div class="legend-title">Events <span class="legend-note">bottom dots</span></div>
+            <div class="legend-items">
+              <span class="legend-item-inline"><span class="event-dot" style="background:#f97316"></span>Sports</span>
+              <span class="legend-item-inline"><span class="event-dot" style="background:#06b6d4"></span>Concert</span>
+              <span class="legend-item-inline"><span class="event-dot" style="background:#ef4444"></span>Mega</span>
+              <span class="legend-item-inline"><span class="event-dot" style="background:#a78bfa"></span>Other</span>
+            </div>
+          </div>
+          <div class="legend-group">
+            <div class="legend-title">Weather <span class="legend-note">top-right corner</span></div>
+            <div class="legend-items">
+              <label class="event-check"><input type="checkbox" class="weather-filter" value="Clear" checked><span class="legend-item-inline"><span class="legend-weather-swatch" style="background:#f59e0b;"></span>Clear</span></label>
+              <label class="event-check"><input type="checkbox" class="weather-filter" value="Cloudy" checked><span class="legend-item-inline"><span class="legend-weather-swatch" style="background:#64748b;"></span>Cloudy</span></label>
+              <label class="event-check"><input type="checkbox" class="weather-filter" value="Fog" checked><span class="legend-item-inline"><span class="legend-weather-swatch" style="background:#94a3b8;"></span>Fog</span></label>
+              <label class="event-check"><input type="checkbox" class="weather-filter" value="Rain" checked><span class="legend-item-inline"><span class="legend-weather-swatch" style="background:#2563eb;"></span>Rain</span></label>
+              <label class="event-check"><input type="checkbox" class="weather-filter" value="Snow" checked><span class="legend-item-inline"><span class="legend-weather-swatch" style="background:#7dd3fc;"></span>Snow</span></label>
+              <label class="event-check"><input type="checkbox" class="weather-filter" value="Storm" checked><span class="legend-item-inline"><span class="legend-weather-swatch" style="background:#7c3aed;"></span>Storm</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <div class="panel">
+  <div class="panel chart-panel">
     <h2>Average Hourly Pattern per Cluster</h2>
     <svg id="chart"></svg>
     <div class="legend" id="legend"></div>
-    <div id="weather-panel" style="margin-top:16px; padding-top:12px; border-top:1px solid #0f3460;">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+  </div>
+  <div class="panel weather-panel-wrap">
+    <div id="weather-panel">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:8px;">
         <h2 style="font-size:13px; margin:0;" id="weather-title">Weather</h2>
-        <div id="weather-view-toggle" style="display:none; gap:4px;">
+        <div id="weather-view-toggle" style="display:none; gap:4px; flex-wrap:wrap;">
           <button class="wv-btn active" id="wv-hist" onclick="setWeatherView('hist')">Histogram</button>
           <button class="wv-btn" id="wv-scatter" onclick="setWeatherView('scatter')">Scatter</button>
         </div>
@@ -122,6 +435,88 @@
   </div>
 </div>
 
+<div class="modal-backdrop" id="events-modal-backdrop">
+  <div class="events-modal" role="dialog" aria-modal="true" aria-labelledby="events-modal-title">
+    <div class="events-modal-header">
+      <div>
+        <div class="events-modal-title" id="events-modal-title">Events</div>
+        <div id="events-summary">Loading events…</div>
+      </div>
+      <button class="events-close-btn" id="close-events-btn">Close</button>
+    </div>
+    <div class="events-modal-body">
+      <div class="event-controls">
+        <label class="event-control-label">
+          Radius
+          <input type="range" id="event-radius" min="0.1" max="3" step="0.1" value="0.85">
+          <span id="event-radius-value">0.85 mi</span>
+        </label>
+        <label class="event-check"><input type="checkbox" class="event-filter" value="Sports" checked>Sports</label>
+        <label class="event-check"><input type="checkbox" class="event-filter" value="Concert" checked>Concert</label>
+        <label class="event-check"><input type="checkbox" class="event-filter" value="Mega" checked>Mega</label>
+        <label class="event-check"><input type="checkbox" class="event-filter" value="Other" checked>Other</label>
+        <input class="events-search" id="event-search" type="search" placeholder="Search events, venues, genres">
+      </div>
+      <div class="events-modal-list" id="events-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="cluster-confirm-backdrop">
+  <div class="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cluster-confirm-title">
+    <div class="events-modal-header">
+      <div class="events-modal-title" id="cluster-confirm-title">Cluster Nearby Stations</div>
+      <button class="events-close-btn" id="cluster-confirm-close">Close</button>
+    </div>
+    <div class="confirm-body" id="cluster-confirm-body"></div>
+    <div class="confirm-actions">
+      <button class="confirm-btn" id="cluster-confirm-cancel">Cancel</button>
+      <button class="confirm-btn primary" id="cluster-confirm-apply">Cluster nearby stations</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="date-search-backdrop">
+  <div class="search-modal" role="dialog" aria-modal="true" aria-labelledby="date-search-title">
+    <div class="events-modal-header">
+      <div class="events-modal-title" id="date-search-title">Search This Date</div>
+      <button class="events-close-btn" id="date-search-close">Close</button>
+    </div>
+    <div class="search-body" id="date-search-body"></div>
+    <div class="confirm-actions">
+      <button class="confirm-btn" id="date-search-cancel">Cancel</button>
+      <button class="confirm-btn primary" id="date-search-apply">Open Google</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="station-picker-backdrop">
+  <div class="station-picker-modal" role="dialog" aria-modal="true" aria-labelledby="station-picker-title">
+    <div class="events-modal-header">
+      <div>
+        <div class="events-modal-title" id="station-picker-title">Select Subway Stations</div>
+        <div class="station-picker-count" id="station-picker-subtitle">Search or click stations on the map.</div>
+      </div>
+      <button class="events-close-btn" id="station-picker-close">Close</button>
+    </div>
+    <div class="station-picker-body">
+      <div class="station-picker-sidebar">
+        <input class="station-search" id="station-search" type="search" placeholder="Search station name or route">
+        <div class="station-results" id="station-results"></div>
+      </div>
+      <div class="station-picker-map" id="station-picker-map"></div>
+    </div>
+    <div class="station-picker-footer">
+      <div class="station-picker-count" id="station-picker-count">0 selected</div>
+      <div style="display:flex; gap:8px;">
+        <button class="confirm-btn" id="station-picker-clear">System-wide</button>
+        <button class="confirm-btn" id="station-picker-cancel">Cancel</button>
+        <button class="confirm-btn primary" id="station-picker-apply">Apply selection</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const COLORS = ['#e94560','#00d2ff','#ffc857','#81ecec','#6c5ce7','#55efc4','#fd79a8','#fdcb6e','#74b9ff','#a29bfe','#ff7675','#55a3ff'];
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -130,6 +525,40 @@ const WEEKDAYS = ['M','T','W','T','F','S','S']; // Monday-first
 let currentData = null;
 let highlightClusters = new Set();
 let weatherData = null;
+let allStations = [];
+let nearbyEvents = [];
+let eventRadiusMiles = 0.85;
+let hoveredDate = null;
+let activeEventStationIds = [];
+let pendingEventStationIds = [];
+let activeEventName = '';
+let pendingDateSearchUrl = '';
+let clusterMode = 'volume';
+let leftView = 'calendar';
+let treeCutGroups = null;
+let treeCutDistance = null;
+let treeZoom = null;
+let treeZoomTransform = d3.zoomIdentity;
+let manualStationIds = [];
+let pendingManualStationIds = [];
+let stationPickerMap = null;
+let stationMarkerLayer = null;
+const stationMarkers = new Map();
+const EVENT_COLORS = {
+  Sports: '#f97316',
+  Concert: '#06b6d4',
+  Mega: '#ef4444',
+  Other: '#a78bfa'
+};
+const WEATHER_TYPES = {
+  Clear: { color: '#f59e0b', label: 'C' },
+  Cloudy: { color: '#64748b', label: 'O' },
+  Fog: { color: '#94a3b8', label: 'F' },
+  Rain: { color: '#2563eb', label: 'R' },
+  Snow: { color: '#7dd3fc', label: 'S' },
+  Storm: { color: '#7c3aed', label: 'T' },
+  Other: { color: '#16a34a', label: '?' },
+};
 
 const tip = {
   el: null,
@@ -162,11 +591,13 @@ async function loadWeather() {
   weatherData = await resp.json();
   const keys = Object.keys(weatherData);
   console.log(`[weather] loaded ${keys.length} dates`, keys.slice(0, 3), weatherData[keys[0]]);
+  if (currentData) renderCalendar();
 }
 
 async function loadStations() {
   const resp = await fetch('/api/subway/stations');
   const stations = await resp.json();
+  allStations = stations;
   const sel = document.getElementById('station-select');
   stations.forEach(s => {
     const opt = document.createElement('option');
@@ -176,32 +607,569 @@ async function loadStations() {
   });
 }
 
+function stationMarkerStyle(selected) {
+  return {
+    radius: selected ? 6 : 4,
+    color: selected ? '#ffffff' : '#0f1626',
+    weight: selected ? 2 : 1,
+    fillColor: selected ? '#e94560' : '#00d2ff',
+    fillOpacity: selected ? 1 : 0.85,
+    opacity: 1,
+  };
+}
+
+function syncStationPickerSelection(scrollStationId = null) {
+  const selected = new Set(pendingManualStationIds.map(String));
+  stationMarkers.forEach((marker, stationId) => {
+    marker.setStyle(stationMarkerStyle(selected.has(String(stationId))));
+    if (selected.has(String(stationId))) marker.bringToFront();
+  });
+  document.querySelectorAll('.station-result').forEach(el => {
+    el.classList.toggle('selected', selected.has(String(el.dataset.stationId)));
+  });
+  document.getElementById('station-picker-count').textContent =
+    `${selected.size} selected`;
+  document.getElementById('station-picker-subtitle').textContent =
+    selected.size ? `${selected.size} selected for clustering` : 'Search or click stations on the map.';
+  if (scrollStationId !== null) {
+    const row = document.querySelector(`.station-result[data-station-id="${scrollStationId}"]`);
+    row?.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function togglePendingStation(stationId, scrollIntoView = false) {
+  const id = String(stationId);
+  const idx = pendingManualStationIds.indexOf(id);
+  if (idx >= 0) pendingManualStationIds.splice(idx, 1);
+  else pendingManualStationIds.push(id);
+  renderStationResults();
+  syncStationPickerSelection(scrollIntoView ? id : null);
+}
+
+function initStationPickerMap() {
+  if (stationPickerMap) return;
+  if (!window.L) {
+    document.getElementById('station-picker-map').innerHTML =
+      '<div style="padding:16px;color:#a0a0c0;font-size:12px;">Map library did not load. Use the station search list.</div>';
+    return;
+  }
+  stationPickerMap = L.map('station-picker-map', {
+    center: [40.7306, -73.9352],
+    zoom: 11,
+    zoomControl: true,
+    attributionControl: false,
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+  }).addTo(stationPickerMap);
+  stationMarkerLayer = L.layerGroup().addTo(stationPickerMap);
+
+  const bounds = [];
+  allStations.forEach(station => {
+    const lat = Number(station.lat);
+    const lng = Number(station.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    const marker = L.circleMarker([lat, lng], stationMarkerStyle(false)).addTo(stationMarkerLayer);
+    marker.on('click', () => togglePendingStation(station.station_id, true));
+    marker.bindTooltip(station.station_name, { direction: 'top', offset: [0, -8] });
+    stationMarkers.set(String(station.station_id), marker);
+    bounds.push([lat, lng]);
+  });
+  if (bounds.length) stationPickerMap.fitBounds(bounds, { padding: [24, 24] });
+}
+
+function renderStationResults() {
+  const q = document.getElementById('station-search').value.trim().toLowerCase();
+  const selected = new Set(pendingManualStationIds.map(String));
+  const results = allStations
+    .filter(station => {
+      if (!q) return true;
+      return `${station.station_name} ${station.station_id}`.toLowerCase().includes(q);
+    })
+    .slice(0, 120);
+  const container = document.getElementById('station-results');
+  container.innerHTML = '';
+  results.forEach(station => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'station-result';
+    btn.dataset.stationId = station.station_id;
+    btn.classList.toggle('selected', selected.has(String(station.station_id)));
+    btn.textContent = station.station_name;
+    btn.addEventListener('click', () => {
+      togglePendingStation(station.station_id, false);
+      stationPickerMap?.setView([station.lat, station.lng], Math.max(stationPickerMap.getZoom(), 14));
+    });
+    container.appendChild(btn);
+  });
+}
+
+function openStationPicker() {
+  pendingManualStationIds = activeEventStationIds.length
+    ? activeEventStationIds.slice()
+    : manualStationIds.slice();
+  document.getElementById('station-picker-backdrop').classList.add('show');
+  initStationPickerMap();
+  renderStationResults();
+  syncStationPickerSelection();
+  setTimeout(() => {
+    stationPickerMap?.invalidateSize();
+    if (stationMarkers.size) {
+      const pts = Array.from(stationMarkers.values()).map(marker => marker.getLatLng());
+      stationPickerMap.fitBounds(pts, { padding: [24, 24] });
+    }
+  }, 80);
+  document.getElementById('station-search').focus();
+}
+
+function closeStationPicker() {
+  document.getElementById('station-picker-backdrop').classList.remove('show');
+}
+
+function applyStationPickerSelection() {
+  manualStationIds = pendingManualStationIds.slice();
+  pendingManualStationIds = [];
+  activeEventStationIds = [];
+  activeEventName = '';
+  document.getElementById('station-select').value = manualStationIds[0] || '';
+  updateStationButton();
+  closeStationPicker();
+  highlightClusters = new Set();
+  hoveredDate = null;
+  nearbyEvents = [];
+  load(parseInt(document.getElementById('k-slider').value));
+  loadNearbyEvents();
+  renderWeather();
+}
+
+function clearStationPickerSelection() {
+  pendingManualStationIds = [];
+  syncStationPickerSelection();
+}
+
+function selectedStationIds() {
+  if (activeEventStationIds.length) return activeEventStationIds;
+  if (manualStationIds.length) return manualStationIds;
+  return [];
+}
+
+function stationNameById(stationId) {
+  const station = allStations.find(s => String(s.station_id) === String(stationId));
+  return station ? station.station_name : String(stationId);
+}
+
+function selectedStationSearchLabel() {
+  const ids = selectedStationIds();
+  if (!ids.length) return 'NYC subway stations';
+  const names = ids.map(stationNameById);
+  if (names.length <= 5) return names.join(', ');
+  return `${names.slice(0, 5).join(', ')} and ${names.length - 5} more NYC subway stations`;
+}
+
+function openDateSearch(dateStr) {
+  const stations = selectedStationSearchLabel();
+  const query = `What are the events like near ${stations} on ${dateStr}?`;
+  pendingDateSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+  const embeddedUrl = `https://www.google.com/search?igu=1&q=${encodeURIComponent(query)}`;
+  document.getElementById('date-search-body').innerHTML = `
+    <div>
+      <div style="color:#a0a0c0; margin-bottom:6px;">Google query</div>
+      <div class="search-query">${query}</div>
+    </div>
+    <iframe class="search-frame" src="${embeddedUrl}" referrerpolicy="no-referrer-when-downgrade"></iframe>
+    <div style="color:#6a6a8a; font-size:11px;">
+      If Google blocks the embedded view, use Open Google.
+    </div>
+  `;
+  document.getElementById('date-search-backdrop').classList.add('show');
+}
+
+function closeDateSearch() {
+  pendingDateSearchUrl = '';
+  document.getElementById('date-search-backdrop').classList.remove('show');
+}
+
+function applyDateSearch() {
+  if (!pendingDateSearchUrl) return;
+  window.open(pendingDateSearchUrl, '_blank', 'noopener,noreferrer');
+  closeDateSearch();
+}
+
+function updateStationButton() {
+  const btn = document.getElementById('open-station-picker');
+  if (activeEventStationIds.length) {
+    btn.textContent = `${activeEventStationIds.length} stations near ${activeEventName}`;
+  } else if (manualStationIds.length === 1) {
+    btn.textContent = stationNameById(manualStationIds[0]);
+  } else if (manualStationIds.length > 1) {
+    btn.textContent = `${manualStationIds.length} selected stations`;
+  } else {
+    btn.textContent = 'System-wide (all stations)';
+  }
+}
+
+function haversineMiles(lat1, lng1, lat2, lng2) {
+  const radiusMiles = 3958.8;
+  const toRad = d => d * Math.PI / 180;
+  const phi1 = toRad(lat1), phi2 = toRad(lat2);
+  const dPhi = toRad(lat2 - lat1);
+  const dLambda = toRad(lng2 - lng1);
+  const a = Math.sin(dPhi / 2) ** 2 +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin(dLambda / 2) ** 2;
+  return 2 * radiusMiles * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function nearbyStationsForEvent(event) {
+  if (event.lat === undefined || event.lng === undefined) return [];
+  return allStations
+    .map(station => ({
+      ...station,
+      distance_miles: haversineMiles(
+        Number(station.lat),
+        Number(station.lng),
+        Number(event.lat),
+        Number(event.lng)
+      )
+    }))
+    .filter(station => station.distance_miles <= eventRadiusMiles)
+    .sort((a, b) => a.distance_miles - b.distance_miles);
+}
+
+function selectedEventCategories() {
+  return new Set(
+    Array.from(document.querySelectorAll('.event-filter:checked'))
+      .map(input => input.value)
+  );
+}
+
+async function loadNearbyEvents() {
+  const stationIds = selectedStationIds();
+  nearbyEvents = [];
+
+  const params = new URLSearchParams({ radius_miles: eventRadiusMiles });
+  if (stationIds.length) params.set('station_ids', stationIds.join(','));
+  const resp = await fetch(`/api/events/nearby?${params}`);
+  const payload = await resp.json();
+  nearbyEvents = payload.events || [];
+  console.log(`[events] stations=${stationIds.join(',') || 'all'} nearby=${nearbyEvents.length}`);
+  renderEvents();
+  renderCalendar();
+}
+
+function eventCategory(event) {
+  const genre = event.genre || '';
+  if (genre.includes('Sports')) return 'Sports';
+  if (genre.includes('Concert')) return 'Concert';
+  if (genre.includes('Street Closure') || genre.includes('Gridlock')) return 'Mega';
+  return 'Other';
+}
+
+function eventDateLabel(event) {
+  const time = event.time ? event.time.slice(0, 5) : '';
+  return `${event.date}${time ? ` ${time}` : ''}`;
+}
+
+function visibleEvents() {
+  const selectedCategories = selectedEventCategories();
+  const clusterDates = selectedClusterDates();
+  const dateFiltered = clusterDates
+    ? nearbyEvents.filter(event => clusterDates.has(event.date))
+    : nearbyEvents;
+  const categoryFiltered = dateFiltered.filter(event => selectedCategories.has(eventCategory(event)));
+  const q = (document.getElementById('event-search')?.value || '').trim().toLowerCase();
+  if (!q) return categoryFiltered;
+  return categoryFiltered.filter(event => {
+    const haystack = [
+      event.event_name,
+      event.venue,
+      event.genre,
+      event.date,
+      event.station_name,
+    ].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(q);
+  });
+}
+
+function eventsByDate(events) {
+  return d3.group(events, event => event.date);
+}
+
+function weatherCategory(weather) {
+  if (!weather) return null;
+  const code = weather.weather_code;
+  if (code !== null && code !== undefined) {
+    if (code === 0) return 'Clear';
+    if (code >= 1 && code <= 3) return 'Cloudy';
+    if (code === 45 || code === 48) return 'Fog';
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'Rain';
+    if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'Snow';
+    if (code >= 95 && code <= 99) return 'Storm';
+    return 'Other';
+  }
+  const rain = weather.rain_in;
+  const snow = weather.snowfall_in;
+  if (snow !== null && snow !== undefined && snow >= 0.01) return 'Snow';
+  if (rain !== null && rain !== undefined && rain >= 0.01) return 'Rain';
+  return 'Clear';
+}
+
+function selectedWeatherCategories() {
+  return new Set(
+    [...document.querySelectorAll('.weather-filter')]
+      .filter(input => input.checked)
+      .map(input => input.value)
+  );
+}
+
+function weatherTooltipLine(weather) {
+  if (!weather) return '';
+  const cat = weatherCategory(weather);
+  if (!cat) return '';
+  const rain = weather.rain_in !== null && weather.rain_in !== undefined
+    ? `${weather.rain_in.toFixed(2)} in rain`
+    : 'rain n/a';
+  const snow = weather.snowfall_in !== null && weather.snowfall_in !== undefined
+    ? `${weather.snowfall_in.toFixed(2)} in snow`
+    : null;
+  const temp = weather.temp_max_f !== null && weather.temp_max_f !== undefined
+    ? `${weather.temp_max_f.toFixed(0)}°F max`
+    : 'temp n/a';
+  const code = weather.weather_code !== null && weather.weather_code !== undefined
+    ? `WMO ${weather.weather_code}`
+    : 'WMO n/a';
+  return `<br><br>${swatch(WEATHER_TYPES[cat].color)}Weather: <b>${cat}</b> · ${code} · ${rain}${snow ? ` · ${snow}` : ''} · ${temp}`;
+}
+
+function eventTooltipHtml(dateStr, clusterId, events) {
+  const clusterLine = clusterId !== undefined ? `Cluster ${clusterId}` : 'No cluster data';
+  const weatherLine = weatherTooltipLine(weatherData?.[dateStr]);
+  if (!events.length) return `<b>${dateStr}</b><br>${clusterLine}${weatherLine}`;
+  const rows = events.map(event => {
+    const cat = eventCategory(event);
+    const time = event.time ? event.time.slice(0, 5) : '';
+    const distance = event.distance_miles !== undefined
+      ? ` · ${event.distance_miles} mi from ${event.station_name}`
+      : '';
+    return `${swatch(EVENT_COLORS[cat])}<b>${event.event_name}</b><br>` +
+      `<span style="color:#a0a0c0">${time}${time ? ' · ' : ''}${event.venue}${distance}</span>`;
+  }).join('<br><br>');
+  return `<b>${dateStr}</b><br>${clusterLine}${weatherLine}<br><br>${rows}`;
+}
+
 async function load(k) {
-  const stationId = document.getElementById('station-select').value;
+  const stationIds = selectedStationIds();
   const params = new URLSearchParams({ k });
-  if (stationId) {
-    params.set('station_id', stationId);
+  if (clusterMode === 'normalized') params.set('normalize', 'true');
+  if (stationIds.length) {
+    params.set('station_ids', stationIds.join(','));
   }
   const resp = await fetch(`/api/subway/clustering?${params}`);
   currentData = await resp.json();
-  const scope = stationId
-    ? document.getElementById('station-select').selectedOptions[0].textContent
+  resetTreeCutFromBackend();
+  const scope = activeEventStationIds.length
+    ? `${activeEventStationIds.length} stations near ${activeEventName}`
+    : manualStationIds.length === 1
+    ? stationNameById(manualStationIds[0])
+    : manualStationIds.length > 1
+    ? `${manualStationIds.length} selected stations`
     : 'System-wide';
   document.getElementById('status').textContent =
-    `${scope} • ${currentData.dates.length} sampled days • ${currentData.clusters.length} clusters`;
+    `${scope} • ${clusterMode === 'normalized' ? 'normalized pattern' : 'volume'} • ${currentData.dates.length} sampled days • ${currentClusters().length} clusters`;
   renderCalendar();
+  renderClusterMap();
+  updateLeftView();
   renderChart();
   renderLegend();
+  renderEvents();
+}
+
+function updateLeftView() {
+  const main = document.getElementById('main');
+  main.classList.toggle('calendar-layout', leftView === 'calendar');
+  main.classList.toggle('map-layout', leftView === 'map');
+  document.getElementById('calendar').style.display = leftView === 'calendar' ? 'grid' : 'none';
+  document.getElementById('tree-view').style.display = 'none';
+  document.getElementById('cluster-map-view').style.display = leftView === 'map' ? 'block' : 'none';
+  document.getElementById('tree-controls').style.display = 'none';
+  document.getElementById('left-view-title').textContent = leftView === 'calendar'
+    ? 'Calendar (click a day to highlight its cluster)'
+    : 'Cluster Map (nearby bubbles have similar hourly patterns)';
+  requestAnimationFrame(() => {
+    updateCalendarSizing();
+    if (leftView === 'map') renderClusterMap();
+    renderChart();
+    renderWeather();
+  });
 }
 
 function clusterColor(id) {
   return COLORS[(id - 1) % COLORS.length];
 }
 
+function makeClusterFromDates(id, dates, sourceNode = null) {
+  const patterns = dates
+    .map(date => currentData.date_patterns?.[date])
+    .filter(Boolean);
+  const mean_pattern = d3.range(24).map(hour =>
+    patterns.length ? d3.mean(patterns, pattern => pattern[hour]) : 0
+  );
+  return {
+    id,
+    size: dates.length,
+    dates,
+    mean_pattern,
+    sourceNode,
+  };
+}
+
+function currentClusters() {
+  return treeCutGroups || currentData?.clusters || [];
+}
+
+function currentDateToCluster() {
+  if (!treeCutGroups) return currentData?.date_to_cluster || {};
+  const out = {};
+  treeCutGroups.forEach(group => {
+    group.dates.forEach(date => { out[date] = group.id; });
+  });
+  return out;
+}
+
+function nodeDates(d) {
+  return d.leaves().map(leaf => leaf.data.date);
+}
+
+function dateKey(dates) {
+  return dates.slice().sort().join('|');
+}
+
+function resetTreeCutFromBackend() {
+  treeCutGroups = null;
+  treeCutDistance = null;
+}
+
+function treeMaxDistance(node) {
+  if (!node) return 0;
+  if (node.distance !== undefined) return node.distance;
+  return d3.max((node.children || []).map(treeMaxDistance)) || 0;
+}
+
+function cutTreeAtDistance(rootData, threshold) {
+  const groups = [];
+  function walk(node) {
+    const dates = collectTreeDates(node);
+    if (!node.children?.length || (node.distance !== undefined && node.distance <= threshold)) {
+      groups.push(dates);
+      return;
+    }
+    node.children.forEach(walk);
+  }
+  walk(rootData);
+  const order = new Map(currentData.dates.map((date, index) => [date, index]));
+  groups.sort((a, b) => d3.min(a, date => order.get(date)) - d3.min(b, date => order.get(date)));
+  return groups.map((dates, index) => makeClusterFromDates(index + 1, dates));
+}
+
+function collectTreeDates(node) {
+  if (!node.children?.length) return node.date ? [node.date] : [];
+  return node.children.flatMap(collectTreeDates);
+}
+
+function applyTreeDistanceCut(distance) {
+  if (!currentData?.tree) return;
+  treeCutDistance = Math.max(0, Math.min(treeMaxDistance(currentData.tree), distance));
+  treeCutGroups = cutTreeAtDistance(currentData.tree, treeCutDistance);
+  rerenderAfterTreeCut();
+}
+
+function rerenderAfterTreeCut() {
+  highlightClusters = new Set();
+  renderCalendar();
+  renderClusterMap();
+  renderChart();
+  renderLegend();
+  renderWeather();
+  renderEvents();
+}
+
+function applyTreeLocalCut(d) {
+  if (!d.children) {
+    toggleCluster(currentDateToCluster()[d.data.date]);
+    return;
+  }
+  treeCutDistance = null;
+
+  const selectedDates = nodeDates(d);
+  const selectedKey = dateKey(selectedDates);
+  const baseGroups = currentClusters().map(group => ({
+    dates: group.dates.slice(),
+  }));
+
+  const clickedIsActiveGroup = baseGroups.some(group => dateKey(group.dates) === selectedKey);
+  if (clickedIsActiveGroup && d.parent) {
+    const parentDates = nodeDates(d.parent);
+    const childKeys = new Set(d.parent.children.map(child => dateKey(nodeDates(child))));
+    const hasAllSiblingsActive = d.parent.children.every(child =>
+      baseGroups.some(group => dateKey(group.dates) === dateKey(nodeDates(child)))
+    );
+    if (hasAllSiblingsActive) {
+      const mergedGroups = [
+        ...baseGroups
+          .filter(group => !childKeys.has(dateKey(group.dates)))
+          .map(group => group.dates),
+        parentDates,
+      ];
+      const order = new Map(currentData.dates.map((date, index) => [date, index]));
+      mergedGroups.sort((a, b) => d3.min(a, date => order.get(date)) - d3.min(b, date => order.get(date)));
+      treeCutGroups = mergedGroups.map((dates, index) => makeClusterFromDates(index + 1, dates));
+      rerenderAfterTreeCut();
+      return;
+    }
+  }
+
+  const selectedSet = new Set(selectedDates);
+
+  let targetIndex = -1;
+  let targetSize = Infinity;
+  baseGroups.forEach((group, index) => {
+    const groupSet = new Set(group.dates);
+    const contains = selectedDates.every(date => groupSet.has(date));
+    if (contains && group.dates.length < targetSize) {
+      targetIndex = index;
+      targetSize = group.dates.length;
+    }
+  });
+  if (targetIndex < 0) return;
+
+  const targetDates = baseGroups[targetIndex].dates;
+  const exactTarget = targetDates.length === selectedDates.length;
+  const replacements = [];
+  if (exactTarget && d.children?.length) {
+    d.children.forEach(child => replacements.push(nodeDates(child)));
+  } else {
+    const remainder = targetDates.filter(date => !selectedSet.has(date));
+    replacements.push(selectedDates);
+    if (remainder.length) replacements.push(remainder);
+  }
+
+  const nextGroups = [
+    ...baseGroups.slice(0, targetIndex).map(group => group.dates),
+    ...replacements,
+    ...baseGroups.slice(targetIndex + 1).map(group => group.dates),
+  ].filter(dates => dates.length);
+
+  const order = new Map(currentData.dates.map((date, index) => [date, index]));
+  nextGroups.sort((a, b) => d3.min(a, date => order.get(date)) - d3.min(b, date => order.get(date)));
+  treeCutGroups = nextGroups.map((dates, index) => makeClusterFromDates(index + 1, dates));
+  rerenderAfterTreeCut();
+}
+
 function renderCalendar() {
   const cal = document.getElementById('calendar');
   cal.innerHTML = '';
   const year = parseInt(currentData.dates[0].slice(0, 4));
+  const visibleEventDates = eventsByDate(visibleEvents());
+  const weatherCategories = selectedWeatherCategories();
 
   for (let m = 0; m < 12; m++) {
     const monthDiv = document.createElement('div');
@@ -222,15 +1190,21 @@ function renderCalendar() {
     let firstDow = (first.getDay() + 6) % 7;
     for (let i = 0; i < firstDow; i++) {
       const blank = document.createElement('div');
+      blank.className = 'calendar-blank';
       grid.appendChild(blank);
     }
     const daysInMonth = new Date(year, m + 1, 0).getDate();
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(m + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const clusterId = currentData.date_to_cluster[dateStr];
+      const clusterId = currentDateToCluster()[dateStr];
+      const dayEvents = visibleEventDates.get(dateStr) || [];
+      const weather = weatherData?.[dateStr];
+      const wCat = weatherCategory(weather);
       const cell = document.createElement('div');
       cell.className = 'day';
-      cell.textContent = d;
+      const dayNum = document.createElement('span');
+      dayNum.textContent = d;
+      cell.appendChild(dayNum);
       if (clusterId !== undefined) {
         cell.classList.add('has-data');
         cell.style.background = clusterColor(clusterId);
@@ -238,31 +1212,529 @@ function renderCalendar() {
         cell.dataset.date = dateStr;
         if (highlightClusters.size > 0) {
           if (highlightClusters.has(clusterId)) cell.classList.add('highlighted');
-          else cell.style.opacity = '0.25';
+          else cell.classList.add('dimmed-date');
         }
-        cell.title = `${dateStr} — Cluster ${clusterId}`;
         cell.addEventListener('click', () => {
           toggleCluster(clusterId);
         });
       }
+      if (dayEvents.length) {
+        const cats = [...new Set(dayEvents.map(eventCategory))];
+        const dots = document.createElement('div');
+        dots.className = 'event-dots';
+        cats.slice(0, 3).forEach(cat => {
+          const dot = document.createElement('span');
+          dot.className = 'event-dot';
+          dot.style.background = EVENT_COLORS[cat];
+          dots.appendChild(dot);
+        });
+        if (dayEvents.length > 3) {
+          const more = document.createElement('span');
+          more.className = 'event-more';
+          more.textContent = `+${dayEvents.length - 3}`;
+          dots.appendChild(more);
+        }
+        cell.appendChild(dots);
+      }
+      if (wCat && weatherCategories.has(wCat)) {
+        const badge = document.createElement('div');
+        badge.className = 'weather-badge';
+        badge.style.background = WEATHER_TYPES[wCat].color;
+        badge.textContent = WEATHER_TYPES[wCat].label;
+        badge.title = wCat;
+        cell.appendChild(badge);
+      }
+      cell.addEventListener('mousemove', ev => {
+        if (hoveredDate !== dateStr) {
+          hoveredDate = dateStr;
+          renderChart();
+        }
+        tip.show(eventTooltipHtml(dateStr, clusterId, dayEvents), ev);
+      });
+      cell.addEventListener('mouseleave', () => {
+        hoveredDate = null;
+        renderChart();
+        tip.hide();
+      });
+      cell.addEventListener('contextmenu', ev => {
+        ev.preventDefault();
+        tip.hide();
+        openDateSearch(dateStr);
+      });
       grid.appendChild(cell);
     }
     monthDiv.appendChild(grid);
     cal.appendChild(monthDiv);
   }
+  requestAnimationFrame(updateCalendarSizing);
+}
+
+function updateCalendarSizing() {
+  if (leftView !== 'calendar') return;
+  const cal = document.getElementById('calendar');
+  if (!cal) return;
+  const rect = cal.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+
+  const monthCols = 4;
+  const monthRows = 3;
+  const monthGapX = 8;
+  const monthGapY = 6;
+  const cellGap = 1;
+  const monthNameH = 11;
+  const weekdayH = 8;
+
+  const monthW = (rect.width - (monthCols - 1) * monthGapX) / monthCols;
+  const monthH = (rect.height - (monthRows - 1) * monthGapY) / monthRows;
+  const dayFromWidth = (monthW - 6 * cellGap) / 7;
+  const dayFromHeight = (monthH - monthNameH - weekdayH - 6 * cellGap) / 6;
+  const daySize = Math.max(7, Math.floor(Math.min(dayFromWidth, dayFromHeight)));
+  cal.style.setProperty('--cal-day-size', `${daySize}px`);
+}
+
+function renderTree() {
+  const svg = d3.select('#tree-svg');
+  svg.selectAll('*').remove();
+  if (!currentData?.tree) return;
+
+  const node = svg.node();
+  const w = node.clientWidth || 520;
+  const h = node.clientHeight || 520;
+  svg.attr('viewBox', `0 0 ${w} ${h}`);
+  svg.on('.zoom', null);
+
+  const margin = { top: 30, right: 18, bottom: 36, left: 58 };
+  const root = d3.hierarchy(currentData.tree);
+  const leaves = root.leaves();
+  if (!leaves.length) return;
+  const dateToCluster = currentDateToCluster();
+  const activeGroupKeys = new Set(currentClusters().map(group => dateKey(group.dates)));
+
+  const leafIndex = new Map(leaves.map((leaf, i) => [leaf, i]));
+  root.eachAfter(d => {
+    if (!d.children) {
+      d.i0 = leafIndex.get(d);
+      d.i1 = d.i0;
+      d.clusterSet = new Set([dateToCluster[d.data.date]].filter(Boolean));
+      d.date0 = d.data.date;
+      d.date1 = d.data.date;
+    } else {
+      d.i0 = d3.min(d.children, child => child.i0);
+      d.i1 = d3.max(d.children, child => child.i1);
+      d.clusterSet = new Set(d.children.flatMap(child => Array.from(child.clusterSet || [])));
+      const dates = nodeDates(d).sort();
+      d.date0 = dates[0];
+      d.date1 = dates[dates.length - 1];
+    }
+  });
+
+  const maxInternalDepth = Math.min(root.height, 5);
+  const contentW = w;
+  const leafSpacing = (contentW - margin.left - margin.right) / Math.max(1, leaves.length - 1);
+  const maxDistance = root.data.distance || treeMaxDistance(currentData.tree) || 1;
+  const x = d3.scaleLinear()
+    .domain([0, Math.max(1, leaves.length - 1)])
+    .range([margin.left, contentW - margin.right]);
+  const y = d3.scaleSymlog()
+    .constant(Math.max(maxDistance / 250, 1e-6))
+    .domain([0, maxDistance])
+    .range([h - margin.bottom, margin.top]);
+
+  function nodeColor(d) {
+    if (d.clusterSet?.size === 1) return clusterColor(Array.from(d.clusterSet)[0]);
+    return '#334155';
+  }
+  function nodeOpacity(d) {
+    if (!highlightClusters.size) return 0.9;
+    const hasHighlighted = Array.from(d.clusterSet || []).some(id => highlightClusters.has(id));
+    return hasHighlighted ? 0.95 : 0.18;
+  }
+  function nodeLabel(d) {
+    if (!d.children) return d.data.date.slice(5);
+    const clusters = Array.from(d.clusterSet || []).sort((a, b) => a - b);
+    return `${d.data.size || d.leaves().length} days${clusters.length === 1 ? ` · C${clusters[0]}` : ''}`;
+  }
+  function nodeX(d) {
+    return x((d.i0 + d.i1) / 2);
+  }
+  function nodeY(d) {
+    return d.children ? y(d.data.distance || 0) : y(0);
+  }
+  function nodeRadius(d) {
+    if (!d.children) return Math.max(0.8, Math.min(2.2, leafSpacing * 0.35));
+    return Math.max(2.5, Math.min(7, 2.4 + Math.sqrt(d.leaves().length) * 0.35));
+  }
+
+  const viewport = svg.append('g').attr('class', 'tree-viewport');
+  const g = viewport.append('g');
+
+  svg.append('text')
+    .attr('x', 12)
+    .attr('y', margin.top - 12)
+    .attr('fill', '#a0a0c0')
+    .attr('font-size', 10)
+    .attr('font-weight', 600)
+    .text('Y: log merge distance');
+  svg.append('text')
+    .attr('x', 12)
+    .attr('y', margin.top)
+    .attr('fill', '#6a6a8a')
+    .attr('font-size', 9)
+    .text('higher = less similar');
+  const displayNodes = root.descendants();
+  const displayNodeSet = new Set(displayNodes);
+  const links = displayNodes
+    .filter(d => d.parent)
+    .map(d => {
+      let parent = d.parent;
+      while (parent && !displayNodeSet.has(parent)) parent = parent.parent;
+      return parent ? { source: parent, target: d } : null;
+    })
+    .filter(Boolean);
+
+  const linkSelection = g.selectAll('path.tree-link')
+    .data(links)
+    .enter()
+    .append('path')
+    .attr('class', 'tree-link')
+    .attr('d', d => {
+      const sx = nodeX(d.source);
+      const sy = nodeY(d.source);
+      const tx = nodeX(d.target);
+      const ty = nodeY(d.target);
+      const midY = (sy + ty) / 2;
+      return `M${sx},${sy}V${midY}H${tx}V${ty}`;
+    })
+    .attr('fill', 'none')
+    .attr('stroke', '#2a3a5c')
+    .attr('stroke-width', 0.7)
+    .attr('opacity', d => Math.min(0.75, nodeOpacity(d.target)));
+
+  const nodeSelection = g.selectAll('circle.cluster-node')
+    .data(displayNodes)
+    .enter()
+    .append('circle')
+    .attr('class', 'cluster-node')
+    .attr('cx', nodeX)
+    .attr('cy', nodeY)
+    .attr('r', nodeRadius)
+    .attr('fill', nodeColor)
+    .attr('opacity', nodeOpacity)
+    .attr('stroke', d => activeGroupKeys.has(dateKey(nodeDates(d))) ? '#ffffff' : (d.children ? '#0f1626' : '#ffffff'))
+    .attr('stroke-width', d => activeGroupKeys.has(dateKey(nodeDates(d))) ? 2 : (d.children ? 1.2 : 0.6))
+    .attr('pointer-events', 'none');
+
+  function showTreeTooltip(ev, d) {
+    if (!d.children && d.data.date) {
+      hoveredDate = d.data.date;
+      renderChart();
+      const dayEvents = eventsByDate(visibleEvents()).get(d.data.date) || [];
+      tip.show(eventTooltipHtml(d.data.date, currentDateToCluster()[d.data.date], dayEvents), ev);
+      return;
+    }
+    const clusters = Array.from(d.clusterSet || []).sort((a, b) => a - b);
+    const dates = nodeDates(d).sort();
+    tip.show(
+      `<b>${nodeLabel(d)}</b><br>` +
+      `Date range: ${dates[0]} to ${dates[dates.length - 1]}<br>` +
+      `Dates in subtree: ${dates.length}<br>` +
+      `Merge distance: ${d.data.distance !== undefined ? d3.format('.3~f')(d.data.distance) : 'leaf'}<br>` +
+      `Clusters: ${clusters.map(id => `C${id}`).join(', ') || 'mixed'}`,
+      ev
+    );
+  }
+
+  const hitSelection = g.selectAll('circle.cluster-hit')
+    .data(displayNodes)
+    .enter()
+    .append('circle')
+    .attr('class', 'cluster-hit')
+    .attr('cx', nodeX)
+    .attr('cy', nodeY)
+    .attr('r', d => d.children
+      ? Math.max(6, nodeRadius(d) + 2)
+      : Math.max(2.5, Math.min(7, leafSpacing * 0.65))
+    )
+    .attr('fill', 'transparent')
+    .style('cursor', 'pointer')
+    .on('mousemove', showTreeTooltip)
+    .on('mouseleave', () => {
+      hoveredDate = null;
+      renderChart();
+      tip.hide();
+    })
+    .on('click', (ev, d) => {
+      applyTreeLocalCut(d);
+    });
+
+  const labelNodes = displayNodes.filter(d => {
+    if (!d.children) return false;
+    const width = x(d.i1) - x(d.i0);
+    return d.depth < maxInternalDepth && (width > 72 || d.depth < 3);
+  });
+  const nodeLabelSelection = g.selectAll('text.node-label')
+    .data(labelNodes)
+    .enter()
+    .append('text')
+    .attr('x', nodeX)
+    .attr('y', d => nodeY(d) - nodeRadius(d) - 4)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#e0e0e0')
+    .attr('font-size', 9)
+    .attr('pointer-events', 'none')
+    .text(nodeLabel);
+
+  const leafLabelStep = Math.max(1, Math.ceil(leaves.length / 18));
+  const leafLabelSelection = g.selectAll('text.leaf-label')
+    .data(leaves.filter((_, i) => i % leafLabelStep === 0))
+    .enter()
+    .append('text')
+    .attr('x', d => x(d.i0))
+    .attr('y', h - 14)
+    .attr('text-anchor', 'middle')
+    .attr('fill', '#a0a0c0')
+    .attr('font-size', 8)
+    .text(d => d.data.date.slice(5));
+
+  y.ticks(5).forEach(distance => {
+    g.append('path')
+      .attr('d', `M${margin.left - 6},${y(distance)}H${contentW - margin.right}`)
+      .attr('fill', 'none')
+      .attr('stroke', '#2a3a5c')
+      .attr('stroke-width', 0.4)
+      .attr('opacity', 0.35);
+    g.append('text')
+      .attr('x', margin.left - 10)
+      .attr('y', y(distance) + 3)
+      .attr('text-anchor', 'end')
+      .attr('fill', '#6a6a8a')
+      .attr('font-size', 9)
+      .text(distance === 0 ? 'dates' : d3.format('.2~f')(distance));
+  });
+
+  const cutDistance = treeCutDistance ?? maxDistance * 0.5;
+  const cutY = y(cutDistance);
+  const cut = g.append('g')
+    .attr('class', 'tree-cut-line')
+    .style('cursor', 'ns-resize');
+  cut.append('line')
+    .attr('x1', margin.left - 6)
+    .attr('x2', contentW - margin.right)
+    .attr('y1', cutY)
+    .attr('y2', cutY)
+    .attr('stroke', treeCutDistance === null ? '#64748b' : '#ffffff')
+    .attr('stroke-width', 1.2)
+    .attr('stroke-dasharray', treeCutDistance === null ? '4,4' : 'none')
+    .attr('opacity', 0.9);
+  cut.append('line')
+    .attr('x1', margin.left - 6)
+    .attr('x2', contentW - margin.right)
+    .attr('y1', cutY)
+    .attr('y2', cutY)
+    .attr('stroke', 'transparent')
+    .attr('stroke-width', 14);
+  cut.append('text')
+    .attr('x', margin.left)
+    .attr('y', cutY - 6)
+    .attr('fill', treeCutDistance === null ? '#94a3b8' : '#ffffff')
+    .attr('font-size', 10)
+    .attr('font-weight', 600)
+    .text(`${treeCutDistance === null ? 'preview cut' : 'active cut'} ${d3.format('.3~f')(cutDistance)}`);
+  cut.call(d3.drag().on('drag', ev => {
+    const [, pointerY] = d3.pointer(ev, g.node());
+    applyTreeDistanceCut(y.invert(pointerY));
+  }));
+
+  treeZoom = d3.zoom()
+    .scaleExtent([0.7, 16])
+    .translateExtent([[-contentW, -h * 4], [contentW + w, h * 5]])
+    .filter(ev => !ev.target.closest?.('.tree-cut-line'))
+    .on('zoom', ev => {
+      treeZoomTransform = ev.transform;
+      viewport.attr('transform', treeZoomTransform);
+    });
+  svg.call(treeZoom);
+  svg.call(treeZoom.transform, treeZoomTransform);
+}
+
+function renderClusterMap() {
+  const svg = d3.select('#cluster-map-svg');
+  svg.selectAll('*').remove();
+  if (!currentData?.cluster_embedding?.length) return;
+
+  const node = svg.node();
+  const w = node.clientWidth || 720;
+  const h = node.clientHeight || 360;
+  svg.attr('viewBox', `0 0 ${w} ${h}`);
+
+  const margin = { top: 34, right: 26, bottom: 32, left: 42 };
+  const points = currentData.cluster_embedding.map(point => ({
+    ...point,
+    cluster: currentClusters().find(c => c.id === point.id),
+  }));
+  const xExtent = d3.extent(points, d => d.x);
+  const yExtent = d3.extent(points, d => d.y);
+  const xPad = Math.max(1, (xExtent[1] - xExtent[0]) * 0.18);
+  const yPad = Math.max(1, (yExtent[1] - yExtent[0]) * 0.18);
+  const x = d3.scaleLinear()
+    .domain([xExtent[0] - xPad, xExtent[1] + xPad])
+    .range([margin.left, w - margin.right]);
+  const y = d3.scaleLinear()
+    .domain([yExtent[0] - yPad, yExtent[1] + yPad])
+    .range([h - margin.bottom, margin.top]);
+  const r = d3.scaleSqrt()
+    .domain([1, d3.max(points, d => d.size) || 1])
+    .range([8, 24]);
+
+  svg.append('text')
+    .attr('x', margin.left)
+    .attr('y', 18)
+    .attr('fill', '#a0a0c0')
+    .attr('font-size', 11)
+    .attr('font-weight', 600)
+    .text('2D MDS of cluster centroids');
+  svg.append('text')
+    .attr('x', margin.left)
+    .attr('y', 31)
+    .attr('fill', '#6a6a8a')
+    .attr('font-size', 10)
+    .text('closer bubbles = more similar 24-hour ridership patterns');
+
+  const g = svg.append('g');
+  const plotBounds = {
+    x0: margin.left,
+    x1: w - margin.right,
+    y0: margin.top,
+    y1: h - margin.bottom,
+  };
+  const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
+  let dragStart = null;
+  let selectionRect = null;
+
+  g.append('g')
+    .attr('class', 'grid')
+    .attr('transform', `translate(0,${h - margin.bottom})`)
+    .call(d3.axisBottom(x).ticks(6).tickSize(-(h - margin.top - margin.bottom)).tickFormat(''));
+  g.append('g')
+    .attr('class', 'grid')
+    .attr('transform', `translate(${margin.left},0)`)
+    .call(d3.axisLeft(y).ticks(5).tickSize(-(w - margin.left - margin.right)).tickFormat(''));
+
+  g.append('rect')
+    .attr('x', plotBounds.x0)
+    .attr('y', plotBounds.y0)
+    .attr('width', plotBounds.x1 - plotBounds.x0)
+    .attr('height', plotBounds.y1 - plotBounds.y0)
+    .attr('fill', 'transparent')
+    .style('cursor', 'crosshair')
+    .call(d3.drag()
+      .on('start', ev => {
+        const [px, py] = d3.pointer(ev, svg.node());
+        dragStart = {
+          x: clamp(px, plotBounds.x0, plotBounds.x1),
+          y: clamp(py, plotBounds.y0, plotBounds.y1),
+        };
+        selectionRect = svg.append('rect')
+          .attr('fill', 'rgba(255,255,255,0.08)')
+          .attr('stroke', '#ffffff')
+          .attr('stroke-width', 1)
+          .attr('stroke-dasharray', '4,3')
+          .attr('pointer-events', 'none');
+      })
+      .on('drag', ev => {
+        if (!dragStart || !selectionRect) return;
+        const [px, py] = d3.pointer(ev, svg.node());
+        const x1 = clamp(px, plotBounds.x0, plotBounds.x1);
+        const y1 = clamp(py, plotBounds.y0, plotBounds.y1);
+        selectionRect
+          .attr('x', Math.min(dragStart.x, x1))
+          .attr('y', Math.min(dragStart.y, y1))
+          .attr('width', Math.abs(x1 - dragStart.x))
+          .attr('height', Math.abs(y1 - dragStart.y));
+      })
+      .on('end', ev => {
+        if (!dragStart || !selectionRect) return;
+        const [px, py] = d3.pointer(ev, svg.node());
+        const x1 = clamp(px, plotBounds.x0, plotBounds.x1);
+        const y1 = clamp(py, plotBounds.y0, plotBounds.y1);
+        const xMin = Math.min(dragStart.x, x1);
+        const xMax = Math.max(dragStart.x, x1);
+        const yMin = Math.min(dragStart.y, y1);
+        const yMax = Math.max(dragStart.y, y1);
+        const selected = points
+          .filter(d => {
+            const px2 = x(d.x);
+            const py2 = y(d.y);
+            return px2 >= xMin && px2 <= xMax && py2 >= yMin && py2 <= yMax;
+          })
+          .map(d => d.id);
+        selectionRect.remove();
+        selectionRect = null;
+        dragStart = null;
+        if (Math.abs(xMax - xMin) < 4 && Math.abs(yMax - yMin) < 4) return;
+        highlightClusters = new Set(selected);
+        renderCalendar();
+        renderClusterMap();
+        renderChart();
+        renderLegend();
+        renderWeather();
+        renderEvents();
+      }));
+
+  const bubbles = g.selectAll('g.cluster-map-node')
+    .data(points)
+    .enter()
+    .append('g')
+    .attr('class', 'cluster-map-node')
+    .attr('transform', d => `translate(${x(d.x)},${y(d.y)})`)
+    .style('cursor', 'pointer')
+    .on('click', (_, d) => toggleCluster(d.id))
+    .on('mousemove', (ev, d) => {
+      const cluster = d.cluster;
+      const total = cluster ? d3.sum(cluster.mean_pattern) : 0;
+      tip.show(
+        `<b>Cluster ${d.id}</b><br>` +
+        `${d.size} day${d.size === 1 ? '' : 's'}<br>` +
+        `Avg daily ridership: ${d3.format(',.0f')(total)}<br>` +
+        `MDS: (${d3.format('.2f')(d.x)}, ${d3.format('.2f')(d.y)})`,
+        ev
+      );
+    })
+    .on('mouseleave', () => tip.hide());
+
+  bubbles.append('circle')
+    .attr('r', d => r(d.size))
+    .attr('fill', d => clusterColor(d.id))
+    .attr('opacity', d => highlightClusters.size === 0 || highlightClusters.has(d.id) ? 0.88 : 0.22)
+    .attr('stroke', d => highlightClusters.has(d.id) ? '#ffffff' : '#0f1626')
+    .attr('stroke-width', d => highlightClusters.has(d.id) ? 2.4 : 1);
+
+  bubbles.append('text')
+    .attr('text-anchor', 'middle')
+    .attr('dy', '0.34em')
+    .attr('fill', '#fff')
+    .attr('font-size', 10)
+    .attr('font-weight', 700)
+    .attr('pointer-events', 'none')
+    .text(d => d.id);
 }
 
 function renderChart() {
   const svg = d3.select('#chart');
   svg.selectAll('*').remove();
   const w = svg.node().clientWidth;
-  const h = 420;
-  const margin = { top: 10, right: 10, bottom: 40, left: 64 };
+  const h = svg.node().clientHeight || 390;
+  svg.attr('height', h);
+  const margin = { top: 14, right: 12, bottom: 52, left: 64 };
   const plotW = w - margin.left - margin.right;
   const plotH = h - margin.top - margin.bottom;
 
-  const clusters = currentData.clusters;
-  const maxY = d3.max(clusters.flatMap(c => c.mean_pattern)) || 1;
+  const clusters = currentClusters();
+  const hoveredPattern = hoveredDate ? currentData.date_patterns?.[hoveredDate] : null;
+  const maxY = Math.max(
+    d3.max(clusters.flatMap(c => c.mean_pattern)) || 1,
+    hoveredPattern ? d3.max(hoveredPattern) || 0 : 0
+  );
 
   const x = d3.scaleLinear().domain([0, 23]).range([0, plotW]);
   const y = d3.scaleLinear().domain([0, maxY]).nice().range([plotH, 0]);
@@ -296,6 +1768,38 @@ function renderChart() {
       .attr('stroke-width', emph ? 2.5 : 1)
       .attr('opacity', emph ? 1 : 0.2);
   });
+
+  if (hoveredPattern) {
+    const hoveredCluster = currentDateToCluster()?.[hoveredDate];
+    g.append('path')
+      .datum(hoveredPattern)
+      .attr('d', line)
+      .attr('fill', 'none')
+      .attr('stroke', '#ffffff')
+      .attr('stroke-width', 2.8)
+      .attr('stroke-dasharray', '5,3')
+      .attr('opacity', 0.95)
+      .attr('pointer-events', 'none');
+
+    const peakHour = d3.maxIndex(hoveredPattern);
+    g.append('circle')
+      .attr('cx', x(peakHour))
+      .attr('cy', y(hoveredPattern[peakHour]))
+      .attr('r', 4)
+      .attr('fill', '#ffffff')
+      .attr('stroke', hoveredCluster ? clusterColor(hoveredCluster) : '#0f1626')
+      .attr('stroke-width', 2)
+      .attr('pointer-events', 'none');
+
+    g.append('text')
+      .attr('x', plotW - 4)
+      .attr('y', 12)
+      .attr('text-anchor', 'end')
+      .attr('fill', '#ffffff')
+      .attr('font-size', '11')
+      .attr('font-weight', '600')
+      .text(`${hoveredDate}${hoveredCluster ? ` · C${hoveredCluster}` : ''}`);
+  }
 
   const guide = g.append('line')
     .attr('y1', 0).attr('y2', plotH)
@@ -333,7 +1837,7 @@ function renderChart() {
 function renderLegend() {
   const lg = document.getElementById('legend');
   lg.innerHTML = '';
-  currentData.clusters.forEach(c => {
+  currentClusters().forEach(c => {
     const item = document.createElement('div');
     item.className = 'legend-item';
     if (highlightClusters.size > 0 && !highlightClusters.has(c.id)) item.classList.add('dim');
@@ -350,8 +1854,125 @@ function toggleCluster(id) {
   else highlightClusters.add(id);
   console.log(`[toggleCluster] id=${id} highlightClusters=`, [...highlightClusters]);
   renderCalendar();
+  renderClusterMap();
   renderChart();
   renderLegend();
+  renderWeather();
+  renderEvents();
+}
+
+function selectedClusterDates() {
+  if (!currentData || highlightClusters.size === 0) return null;
+  const dates = new Set();
+  currentClusters()
+    .filter(c => highlightClusters.has(c.id))
+    .forEach(c => c.dates.forEach(d => dates.add(d)));
+  return dates;
+}
+
+function renderEvents() {
+  const summary = document.getElementById('events-summary');
+  const list = document.getElementById('events-list');
+  const openBtn = document.getElementById('open-events-btn');
+  const stationIds = selectedStationIds();
+  list.innerHTML = '';
+
+  const stationName = stationIds.length === 1
+    ? stationNameById(stationIds[0])
+    : stationIds.length > 1
+      ? `${stationIds.length} selected stations`
+      : 'all stations';
+  const clusterDates = selectedClusterDates();
+  const events = visibleEvents();
+
+  const clusterText = clusterDates
+    ? ` on selected cluster dates`
+    : '';
+  summary.textContent = stationIds.length
+    ? `${events.length} event${events.length === 1 ? '' : 's'} within ${eventRadiusMiles.toFixed(1)} mi of ${stationName}${clusterText}.`
+    : `${events.length} geocoded event${events.length === 1 ? '' : 's'} across all mapped event venues${clusterText}. Radius applies after selecting station(s).`;
+  if (openBtn) {
+    openBtn.textContent = `Events (${events.length})`;
+  }
+
+  if (events.length === 0) {
+    list.innerHTML = '<div class="event-empty">No matching nearby events for this station/date selection.</div>';
+    return;
+  }
+
+  events.slice(0, 80).forEach(event => {
+    const card = document.createElement('div');
+    card.className = 'event-card';
+    card.style.cursor = 'pointer';
+    card.title = 'Click to cluster subway stations near this event';
+    card.innerHTML = `
+      <div class="event-title">${event.event_name}</div>
+      <div class="event-meta">
+        ${eventDateLabel(event)} · ${event.venue}${event.distance_miles !== undefined ? ` · ${event.distance_miles} mi from ${event.station_name}` : ''}
+      </div>
+      <div class="event-meta event-genre">${event.genre}</div>
+    `;
+    card.addEventListener('click', () => openClusterConfirm(event));
+    list.appendChild(card);
+  });
+
+  if (events.length > 80) {
+    const more = document.createElement('div');
+    more.className = 'event-empty';
+    more.textContent = `Showing first 80 of ${events.length} events.`;
+    list.appendChild(more);
+  }
+}
+
+function openClusterConfirm(event) {
+  const stations = nearbyStationsForEvent(event);
+  pendingEventStationIds = stations.map(station => String(station.station_id));
+  const body = document.getElementById('cluster-confirm-body');
+  const applyBtn = document.getElementById('cluster-confirm-apply');
+  const stationRows = stations.slice(0, 16).map(station => `
+    <div class="confirm-station">
+      <span>${station.station_name}</span>
+      <span>${station.distance_miles.toFixed(2)} mi</span>
+    </div>
+  `).join('');
+
+  body.innerHTML = `
+    <div><b>${event.event_name}</b></div>
+    <div style="color:#a0a0c0;">${eventDateLabel(event)} · ${event.venue}</div>
+    <div style="margin-top:10px;">
+      This will cluster subway ridership using ${stations.length} station${stations.length === 1 ? '' : 's'}
+      within ${eventRadiusMiles.toFixed(1)} mi of the event venue.
+    </div>
+    <div class="confirm-stations">
+      ${stationRows || '<div style="color:#6a6a8a;">No subway stations found inside the current radius.</div>'}
+      ${stations.length > 16 ? `<div style="color:#6a6a8a;">+ ${stations.length - 16} more stations</div>` : ''}
+    </div>
+  `;
+  applyBtn.disabled = stations.length === 0;
+  applyBtn.style.opacity = stations.length === 0 ? '0.45' : '1';
+  applyBtn.dataset.eventName = event.event_name;
+  document.getElementById('cluster-confirm-backdrop').classList.add('show');
+}
+
+function closeClusterConfirm() {
+  pendingEventStationIds = [];
+  document.getElementById('cluster-confirm-backdrop').classList.remove('show');
+}
+
+function applyEventStationCluster() {
+  if (!pendingEventStationIds.length) return;
+  activeEventStationIds = pendingEventStationIds.slice();
+  activeEventName = document.getElementById('cluster-confirm-apply').dataset.eventName || 'selected event';
+  manualStationIds = [];
+  pendingEventStationIds = [];
+  hoveredDate = null;
+  highlightClusters = new Set();
+  document.getElementById('station-select').value = '';
+  updateStationButton();
+  document.getElementById('cluster-confirm-backdrop').classList.remove('show');
+  document.getElementById('events-modal-backdrop').classList.remove('show');
+  load(parseInt(document.getElementById('k-slider').value));
+  loadNearbyEvents();
   renderWeather();
 }
 
@@ -556,7 +2177,7 @@ function renderWeather() {
     title.textContent = 'Weather';
     return;
   }
-  const selected = currentData.clusters.filter(c => highlightClusters.has(c.id));
+  const selected = currentClusters().filter(c => highlightClusters.has(c.id));
   if (selected.length === 0) {
     placeholder.style.display = '';
     charts.style.display = 'none';
@@ -640,13 +2261,121 @@ document.getElementById('k-slider').addEventListener('input', (e) => {
 });
 document.getElementById('k-slider').addEventListener('change', (e) => {
   highlightClusters = new Set();
+  hoveredDate = null;
   load(parseInt(e.target.value));
   renderWeather();
 });
 
-document.getElementById('station-select').addEventListener('change', () => {
-  highlightClusters = new Set();
-  load(parseInt(document.getElementById('k-slider').value));
+document.querySelectorAll('#cluster-mode button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    clusterMode = btn.dataset.mode;
+    document.querySelectorAll('#cluster-mode button').forEach(b => {
+      b.classList.toggle('active', b === btn);
+    });
+    highlightClusters = new Set();
+    hoveredDate = null;
+    load(parseInt(document.getElementById('k-slider').value));
+    renderWeather();
+  });
+});
+
+document.querySelectorAll('#left-view-toggle button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    leftView = btn.dataset.view;
+    document.querySelectorAll('#left-view-toggle button').forEach(b => {
+      b.classList.toggle('active', b === btn);
+    });
+    updateLeftView();
+  });
+});
+document.getElementById('tree-zoom-in').addEventListener('click', () => {
+  if (!treeZoom) return;
+  d3.select('#tree-svg').transition().duration(150).call(treeZoom.scaleBy, 1.6);
+});
+document.getElementById('tree-zoom-out').addEventListener('click', () => {
+  if (!treeZoom) return;
+  d3.select('#tree-svg').transition().duration(150).call(treeZoom.scaleBy, 1 / 1.6);
+});
+document.getElementById('tree-zoom-reset').addEventListener('click', () => {
+  if (!treeZoom) return;
+  treeZoomTransform = d3.zoomIdentity;
+  d3.select('#tree-svg').transition().duration(150).call(treeZoom.transform, treeZoomTransform);
+});
+document.getElementById('tree-cut-reset').addEventListener('click', () => {
+  resetTreeCutFromBackend();
+  rerenderAfterTreeCut();
+});
+
+document.getElementById('open-station-picker').addEventListener('click', openStationPicker);
+document.getElementById('station-picker-close').addEventListener('click', closeStationPicker);
+document.getElementById('station-picker-cancel').addEventListener('click', closeStationPicker);
+document.getElementById('station-picker-apply').addEventListener('click', applyStationPickerSelection);
+document.getElementById('station-picker-clear').addEventListener('click', clearStationPickerSelection);
+document.getElementById('station-search').addEventListener('input', renderStationResults);
+document.getElementById('station-picker-backdrop').addEventListener('click', (ev) => {
+  if (ev.target.id === 'station-picker-backdrop') closeStationPicker();
+});
+
+document.getElementById('event-radius').addEventListener('input', (e) => {
+  eventRadiusMiles = parseFloat(e.target.value);
+  document.getElementById('event-radius-value').textContent = `${eventRadiusMiles.toFixed(1)} mi`;
+});
+document.getElementById('event-radius').addEventListener('change', (e) => {
+  eventRadiusMiles = parseFloat(e.target.value);
+  loadNearbyEvents();
+});
+document.querySelectorAll('.event-filter').forEach(input => {
+  input.addEventListener('change', () => {
+    renderCalendar();
+    renderEvents();
+  });
+});
+document.querySelectorAll('.weather-filter').forEach(input => {
+  input.addEventListener('change', () => {
+    renderCalendar();
+  });
+});
+document.getElementById('event-search').addEventListener('input', () => {
+  renderCalendar();
+  renderEvents();
+});
+document.getElementById('open-events-btn').addEventListener('click', () => {
+  document.getElementById('events-modal-backdrop').classList.add('show');
+  document.getElementById('event-search').focus();
+  renderEvents();
+});
+document.getElementById('close-events-btn').addEventListener('click', () => {
+  document.getElementById('events-modal-backdrop').classList.remove('show');
+});
+document.getElementById('cluster-confirm-close').addEventListener('click', closeClusterConfirm);
+document.getElementById('cluster-confirm-cancel').addEventListener('click', closeClusterConfirm);
+document.getElementById('cluster-confirm-apply').addEventListener('click', applyEventStationCluster);
+document.getElementById('date-search-close').addEventListener('click', closeDateSearch);
+document.getElementById('date-search-cancel').addEventListener('click', closeDateSearch);
+document.getElementById('date-search-apply').addEventListener('click', applyDateSearch);
+document.getElementById('events-modal-backdrop').addEventListener('click', (ev) => {
+  if (ev.target.id === 'events-modal-backdrop') {
+    ev.currentTarget.classList.remove('show');
+  }
+});
+document.getElementById('cluster-confirm-backdrop').addEventListener('click', (ev) => {
+  if (ev.target.id === 'cluster-confirm-backdrop') closeClusterConfirm();
+});
+document.getElementById('date-search-backdrop').addEventListener('click', (ev) => {
+  if (ev.target.id === 'date-search-backdrop') closeDateSearch();
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') {
+    document.getElementById('events-modal-backdrop').classList.remove('show');
+    closeStationPicker();
+    closeClusterConfirm();
+    closeDateSearch();
+  }
+});
+window.addEventListener('resize', () => {
+  updateCalendarSizing();
+  if (leftView === 'map') renderClusterMap();
+  renderChart();
   renderWeather();
 });
 
@@ -655,9 +2384,12 @@ loadStations().then(() => {
   const urlParams = new URLSearchParams(window.location.search);
   const stationId = urlParams.get('station_id');
   if (stationId) {
+    manualStationIds = [stationId];
     document.getElementById('station-select').value = stationId;
   }
+  updateStationButton();
   load(5);
+  loadNearbyEvents();
 });
 </script>
 </body>

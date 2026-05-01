@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Modality Comparison — NYC Transit</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  height: 100vh; overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #1a1a2e; color: #e0e0e0;
+  display: flex; flex-direction: column;
+  padding: 10px; gap: 8px;
+}
+
+/* ── View Transitions ── */
+@view-transition { navigation: auto; }
+
+#controls     { view-transition-name: page-controls; }
+#calendar-col { view-transition-name: cal-section; }
+#panels-col   { view-transition-name: chart-section; }
+
+::view-transition-group(page-controls) {
+  animation-duration: 0.42s;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+::view-transition-group(cal-section),
+::view-transition-group(chart-section) {
+  animation-duration: 0.52s;
+  animation-timing-function: cubic-bezier(0.76, 0, 0.24, 1);
+}
+@keyframes _vt-out { to   { opacity:0; filter:blur(3px); } }
+@keyframes _vt-in  { from { opacity:0; filter:blur(3px); } }
+::view-transition-old(cal-section),
+::view-transition-old(chart-section) { animation: 0.18s ease both _vt-out; }
+::view-transition-new(cal-section),
+::view-transition-new(chart-section) { animation: 0.32s ease 0.18s both _vt-in; }
+
+/* ── Controls bar ── */
+#controls {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 14px;
+  padding: 7px 14px;
+  background: #16213e; border: 1px solid #0f3460; border-radius: 6px;
+}
+#controls a { color: #00d2ff; font-size: 12px; text-decoration: none; }
+#controls label { font-size: 12px; color: #a0a0c0; }
+#controls input[type=range] { width: 110px; accent-color: #e94560; }
+#k-display { font-size: 13px; font-weight: 600; color: #e94560; width: 18px; text-align: center; }
+#status { margin-left: auto; font-size: 11px; color: #6a6a8a; }
+
+/* ── Main area: calendar | panels ── */
+#main-area {
+  flex: 1; min-height: 0;
+  display: flex; gap: 10px;
+}
+
+/* ── Tall thin calendar column ── */
+#calendar-col {
+  width: 170px; flex-shrink: 0;
+  background: #16213e; border: 1px solid #0f3460; border-radius: 6px;
+  padding: 8px 6px 6px 8px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+#calendar-col h2 {
+  font-size: 8px; font-weight: 700; letter-spacing: 1px; color: #555570;
+  text-transform: uppercase; flex-shrink: 0; margin-bottom: 5px;
+}
+#calendar-grid {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.cal-month {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+}
+.cal-month-name {
+  font-size: 8px; font-weight: 600; color: #8080a0;
+  flex-shrink: 0; padding-left: 1px; margin-bottom: 1px;
+}
+.cal-month-grid {
+  flex: 1; min-height: 0;
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr; gap: 1px;
+}
+.cal-wd {
+  font-size: 5px; color: #3a3a5a;
+  display: flex; align-items: center; justify-content: center;
+}
+.cal-day {
+  border-radius: 1px;
+  background: #0d1424;
+}
+.cal-day.has-data { cursor: pointer; transition: filter 0.1s; }
+.cal-day.has-data:hover { filter: brightness(1.6) !important; }
+.cal-day.active-cluster { outline: 1.5px solid rgba(255,255,255,0.75); outline-offset: -1px; }
+
+/* ── Right column: two stacked panels ── */
+#panels-col {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+/* ── Each panel ── */
+.comp-panel {
+  flex: 1; min-height: 0;
+  background: #16213e; border: 1px solid #0f3460; border-radius: 6px;
+  padding: 8px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+  overflow: hidden;
+}
+
+.panel-selector {
+  flex-shrink: 0;
+  display: flex; align-items: center; gap: 7px;
+  min-height: 22px;
+}
+.panel-label {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; flex-shrink: 0; min-width: 28px;
+}
+.ds-tabs { display: flex; gap: 2px; flex-shrink: 0; }
+.ds-btn {
+  font-size: 10px; font-weight: 600; padding: 2px 9px; border-radius: 3px; cursor: pointer;
+  background: #1a1a2e; border: 1px solid #0f3460; color: #808090;
+}
+.ds-btn.active { background: #0f3460; color: #fff; border-color: #00d2ff; }
+.cluster-tabs { display: flex; flex-wrap: wrap; gap: 2px; }
+.cl-btn {
+  font-size: 10px; padding: 2px 7px; border-radius: 3px; cursor: pointer;
+  border: 1px solid transparent; color: #e0e0e0; opacity: 0.35;
+}
+.cl-btn.active { opacity: 1; border-color: rgba(255,255,255,0.55); font-weight: 600; }
+
+.chart-title { font-size: 10px; color: #808090; flex-shrink: 0; line-height: 1; }
+
+/* Hourly SVG — takes all remaining vertical space */
+.hourly-svg { width: 100%; flex: 1; min-height: 40px; display: block; }
+
+/* Weather section — fixed height, at bottom of each panel */
+.weather-section {
+  flex-shrink: 0;
+  border-top: 1px solid #0f3460; padding-top: 5px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.weather-header {
+  display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+}
+.weather-label { font-size: 9px; color: #6a6a8a; }
+.wv-toggle { display: flex; gap: 2px; }
+.wv-btn {
+  font-size: 9px; padding: 1px 7px; border-radius: 3px; cursor: pointer;
+  background: #1a1a2e; border: 1px solid #0f3460; color: #5a5a7a;
+}
+.wv-btn.active { background: #0f3460; color: #c0c0d0; }
+.weather-charts-row { display: flex; gap: 6px; flex-shrink: 0; }
+.weather-col { flex: 1; min-width: 0; }
+.chart-label { font-size: 8px; color: #5a5a7a; margin-bottom: 1px; }
+.stats-line  { font-size: 8px; color: #5a5a7a; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+
+<div id="controls">
+  <a href="#" onclick="navigateBack(event)">← Clustering</a>
+  <label>k =</label>
+  <input type="range" id="k-slider" min="2" max="12" value="5">
+  <span id="k-display">5</span>
+  <div id="status"></div>
+</div>
+
+<div id="main-area">
+
+  <!-- Tall thin calendar showing left panel's cluster assignments -->
+  <div id="calendar-col">
+    <h2>Calendar ← Left panel</h2>
+    <div id="calendar-grid"></div>
+  </div>
+
+  <!-- Two stacked comparison panels -->
+  <div id="panels-col">
+
+    <div class="comp-panel">
+      <div class="panel-selector">
+        <span class="panel-label" style="color:#00d2ff">Left</span>
+        <div class="ds-tabs" id="ds-tabs-left">
+          <button class="ds-btn active" onclick="setDataset('left','subway')">Subway</button>
+          <button class="ds-btn"        onclick="setDataset('left','citibike')">Citibike</button>
+        </div>
+        <div class="cluster-tabs" id="cluster-tabs-left"></div>
+      </div>
+      <div class="chart-title" id="chart-title-left">Hourly Pattern</div>
+      <svg class="hourly-svg" id="chart-left"></svg>
+      <div class="weather-section">
+        <div class="weather-header">
+          <span class="weather-label" id="weather-title-left">Weather</span>
+          <div class="wv-toggle">
+            <button class="wv-btn active" id="wv-hist-left"    onclick="setWeatherView('left','hist')">Hist</button>
+            <button class="wv-btn"        id="wv-scatter-left" onclick="setWeatherView('left','scatter')">Scatter</button>
+          </div>
+        </div>
+        <div class="weather-charts-row" id="wcols-left">
+          <div class="weather-col">
+            <div class="chart-label" id="left-rain-label">Rainfall (in)</div>
+            <svg id="left-rain-chart" width="100%" height="72"></svg>
+            <div class="stats-line" id="left-rain-stats"></div>
+          </div>
+          <div class="weather-col">
+            <div class="chart-label" id="left-temp-label">Max temp (°F)</div>
+            <svg id="left-temp-chart" width="100%" height="72"></svg>
+            <div class="stats-line" id="left-temp-stats"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="comp-panel">
+      <div class="panel-selector">
+        <span class="panel-label" style="color:#ffc857">Right</span>
+        <div class="ds-tabs" id="ds-tabs-right">
+          <button class="ds-btn"        onclick="setDataset('right','subway')">Subway</button>
+          <button class="ds-btn active" onclick="setDataset('right','citibike')">Citibike</button>
+        </div>
+        <div class="cluster-tabs" id="cluster-tabs-right"></div>
+      </div>
+      <div class="chart-title" id="chart-title-right">Hourly Pattern</div>
+      <svg class="hourly-svg" id="chart-right"></svg>
+      <div class="weather-section">
+        <div class="weather-header">
+          <span class="weather-label" id="weather-title-right">Weather</span>
+          <div class="wv-toggle">
+            <button class="wv-btn active" id="wv-hist-right"    onclick="setWeatherView('right','hist')">Hist</button>
+            <button class="wv-btn"        id="wv-scatter-right" onclick="setWeatherView('right','scatter')">Scatter</button>
+          </div>
+        </div>
+        <div class="weather-charts-row" id="wcols-right">
+          <div class="weather-col">
+            <div class="chart-label" id="right-rain-label">Rainfall (in)</div>
+            <svg id="right-rain-chart" width="100%" height="72"></svg>
+            <div class="stats-line" id="right-rain-stats"></div>
+          </div>
+          <div class="weather-col">
+            <div class="chart-label" id="right-temp-label">Max temp (°F)</div>
+            <svg id="right-temp-chart" width="100%" height="72"></svg>
+            <div class="stats-line" id="right-temp-stats"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const COLORS      = ['#e94560','#00d2ff','#ffc857','#81ecec','#6c5ce7','#55efc4','#fd79a8','#fdcb6e','#74b9ff','#a29bfe','#ff7675','#55a3ff'];
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WEEKDAYS    = ['M','T','W','T','F','S','S'];
+
+const clusteringData = { subway: null, citibike: null };
+let weatherData = null;
+let sharedK = 5;
+let stationId = '';
+
+const panelState = {
+  left:  { dataset: 'subway',   clusterId: 1, weatherView: 'hist' },
+  right: { dataset: 'citibike', clusterId: 1, weatherView: 'hist' },
+};
+
+function clusterColor(id) { return COLORS[(id - 1) % COLORS.length]; }
+
+// ── Calendar (shows left panel's clusters) ─────────────────────────────────
+
+function renderCalendar() {
+  const container = document.getElementById('calendar-grid');
+  container.innerHTML = '';
+
+  const data = clusteringData[panelState.left.dataset];
+  if (!data?.dates?.length) return;
+
+  const year     = parseInt(data.dates[0].slice(0, 4));
+  const activeCl = panelState.left.clusterId;
+
+  for (let m = 0; m < 12; m++) {
+    const monthDiv = document.createElement('div');
+    monthDiv.className = 'cal-month';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'cal-month-name';
+    nameEl.textContent = MONTH_NAMES[m];
+    monthDiv.appendChild(nameEl);
+
+    const grid = document.createElement('div');
+    grid.className = 'cal-month-grid';
+
+    WEEKDAYS.forEach(wd => {
+      const el = document.createElement('div');
+      el.className = 'cal-wd'; el.textContent = wd;
+      grid.appendChild(el);
+    });
+
+    const firstDow = (new Date(year, m, 1).getDay() + 6) % 7;
+    for (let i = 0; i < firstDow; i++) grid.appendChild(document.createElement('div'));
+
+    const daysInMonth = new Date(year, m + 1, 0).getDate();
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const clId = data.date_to_cluster?.[dateStr];
+      const cell = document.createElement('div');
+      cell.className = 'cal-day';
+
+      if (clId !== undefined) {
+        cell.classList.add('has-data');
+        cell.style.background = clusterColor(clId);
+        cell.style.opacity    = clId === activeCl ? '1' : '0.2';
+        if (clId === activeCl) cell.classList.add('active-cluster');
+        cell.title = `${dateStr} — Cluster ${clId}`;
+        cell.addEventListener('click', () => {
+          panelState.left.clusterId = clId;
+          updatePanel('left');
+          renderCalendar();
+        });
+      }
+      grid.appendChild(cell);
+    }
+
+    monthDiv.appendChild(grid);
+    container.appendChild(monthDiv);
+  }
+}
+
+// ── Hourly chart ───────────────────────────────────────────────────────────
+
+function renderChartForPanel(side, selectedCluster, allClusters) {
+  const svg = document.getElementById(`chart-${side}`);
+  svg.innerHTML = '';
+  const w = svg.clientWidth  || 500;
+  const h = svg.clientHeight || 160;
+  const margin = { top: 8, right: 8, bottom: 22, left: 44 };
+  const plotW = w - margin.left - margin.right;
+  const plotH = h - margin.top  - margin.bottom;
+  const ns = 'http://www.w3.org/2000/svg';
+
+  const maxY = Math.max(...allClusters.flatMap(c => c.mean_pattern));
+  const xScale = i => margin.left + (i / 23) * plotW;
+  const yScale = v => margin.top  + plotH - (v / maxY) * plotH;
+
+  for (let i = 0; i <= 4; i++) {
+    const y = margin.top + (i / 4) * plotH;
+    const gl = document.createElementNS(ns, 'line');
+    gl.setAttribute('x1', margin.left); gl.setAttribute('x2', margin.left + plotW);
+    gl.setAttribute('y1', y); gl.setAttribute('y2', y);
+    gl.setAttribute('stroke', '#252f4a'); gl.setAttribute('stroke-width', '1');
+    svg.appendChild(gl);
+    const val = maxY * (1 - i / 4);
+    const lbl = document.createElementNS(ns, 'text');
+    lbl.setAttribute('x', margin.left - 3); lbl.setAttribute('y', y + 3);
+    lbl.setAttribute('text-anchor', 'end'); lbl.setAttribute('fill', '#6a6a8a'); lbl.setAttribute('font-size', '8');
+    lbl.textContent = val >= 1e6 ? `${(val/1e6).toFixed(1)}M` : val >= 1e3 ? `${(val/1e3).toFixed(0)}k` : Math.round(val);
+    svg.appendChild(lbl);
+  }
+  for (let hr = 0; hr <= 24; hr += 6) {
+    const lbl = document.createElementNS(ns, 'text');
+    lbl.setAttribute('x', xScale(hr)); lbl.setAttribute('y', h - margin.bottom + 10);
+    lbl.setAttribute('text-anchor', 'middle'); lbl.setAttribute('fill', '#6a6a8a'); lbl.setAttribute('font-size', '8');
+    lbl.textContent = `${hr}:00`; svg.appendChild(lbl);
+  }
+  const ylab = document.createElementNS(ns, 'text');
+  ylab.setAttribute('transform', 'rotate(-90)');
+  ylab.setAttribute('x', -(margin.top + plotH / 2)); ylab.setAttribute('y', 13);
+  ylab.setAttribute('text-anchor', 'middle'); ylab.setAttribute('fill', '#a0a0c0'); ylab.setAttribute('font-size', '8');
+  ylab.textContent = 'Ridership / hour'; svg.appendChild(ylab);
+
+  allClusters.forEach(c => {
+    const path = document.createElementNS(ns, 'path');
+    const d = c.mean_pattern.map((v, i) => `${i===0?'M':'L'}${xScale(i)},${yScale(v)}`).join(' ');
+    const emph = c.id === selectedCluster.id;
+    path.setAttribute('d', d); path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', clusterColor(c.id));
+    path.setAttribute('stroke-width', emph ? '2' : '1');
+    path.setAttribute('opacity',      emph ? '1' : '0.1');
+    svg.appendChild(path);
+  });
+}
+
+// ── Histogram ──────────────────────────────────────────────────────────────
+
+function binValues(values, binEdges) {
+  const counts = new Array(binEdges.length - 1).fill(0);
+  values.forEach(v => {
+    for (let i = 0; i < counts.length; i++) {
+      if (v >= binEdges[i] && (i === counts.length - 1 ? v <= binEdges[i+1] : v < binEdges[i+1])) {
+        counts[i]++; break;
+      }
+    }
+  });
+  return counts;
+}
+
+function renderHist(svgId, series, binEdges, fmt) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  const w = svg.clientWidth || 220;
+  const h = parseInt(svg.getAttribute('height')) || 72;
+  const padL = 24, padR = 4, padT = 4, padB = 15;
+  const ns = 'http://www.w3.org/2000/svg';
+  const nBins = binEdges.length - 1, nSeries = series.length;
+  if (!nSeries) return;
+
+  const seriesCounts = series.map(s => binValues(s.values, binEdges));
+  const seriesProps  = series.map((s, si) =>
+    seriesCounts[si].map(c => s.values.length ? c / s.values.length : 0)
+  );
+  const maxP  = Math.max(0.0001, ...seriesProps.flat());
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  const groupW = plotW / nBins, barW = Math.max(1, (groupW - 2) / nSeries);
+
+  for (let i = 0; i < nBins; i++) {
+    for (let si = 0; si < nSeries; si++) {
+      const p = seriesProps[si][i], bh = (p / maxP) * plotH;
+      const r = document.createElementNS(ns, 'rect');
+      r.setAttribute('x',      padL + i * groupW + 1 + si * barW);
+      r.setAttribute('y',      padT + plotH - bh);
+      r.setAttribute('width',  barW); r.setAttribute('height', bh);
+      r.setAttribute('fill',   series[si].color); r.setAttribute('opacity', '0.85');
+      const title = document.createElementNS(ns, 'title');
+      title.textContent = `${series[si].label}: ${(p*100).toFixed(0)}% (${seriesCounts[si][i]} days)`;
+      r.appendChild(title); svg.appendChild(r);
+    }
+  }
+  const step = nBins > 8 ? 2 : 1;
+  for (let i = 0; i < binEdges.length; i += step) {
+    const t = document.createElementNS(ns, 'text');
+    t.setAttribute('x', padL + i * groupW); t.setAttribute('y', h - 2);
+    t.setAttribute('fill', '#a0a0c0'); t.setAttribute('font-size', '7'); t.setAttribute('text-anchor', 'middle');
+    t.textContent = fmt(binEdges[i]); svg.appendChild(t);
+  }
+  const yt = document.createElementNS(ns, 'text');
+  yt.setAttribute('x', padL - 3); yt.setAttribute('y', padT + 6);
+  yt.setAttribute('fill', '#a0a0c0'); yt.setAttribute('font-size', '7'); yt.setAttribute('text-anchor', 'end');
+  yt.textContent = `${(maxP*100).toFixed(0)}%`; svg.appendChild(yt);
+}
+
+// ── Scatter ────────────────────────────────────────────────────────────────
+
+function renderScatterPlot(svgId, points, xLabel) {
+  const svg = document.getElementById(svgId);
+  svg.innerHTML = '';
+  const w = svg.clientWidth || 220;
+  const h = parseInt(svg.getAttribute('height')) || 72;
+  const padL = 38, padR = 6, padT = 5, padB = 22;
+  const ns = 'http://www.w3.org/2000/svg';
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+  if (!points.length) return;
+
+  const xs = points.map(p=>p.x), ys = points.map(p=>p.y);
+  let xMin = Math.min(...xs), xMax = Math.max(...xs);
+  let yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const xPad = (xMax-xMin)*0.05||0.5, yPad = (yMax-yMin)*0.05||1;
+  xMin -= xPad; xMax += xPad; yMin -= yPad; yMax += yPad;
+
+  const xScale = x => padL + ((x-xMin)/(xMax-xMin))*plotW;
+  const yScale = y => padT + plotH - ((y-yMin)/(yMax-yMin))*plotH;
+
+  for (let i = 0; i <= 3; i++) {
+    const y = padT + (i/3)*plotH;
+    const gl = document.createElementNS(ns,'line');
+    gl.setAttribute('x1',padL); gl.setAttribute('x2',padL+plotW);
+    gl.setAttribute('y1',y); gl.setAttribute('y2',y);
+    gl.setAttribute('stroke','#252f4a'); gl.setAttribute('stroke-width','1');
+    svg.appendChild(gl);
+    const val = yMax - (i/3)*(yMax-yMin);
+    const lbl = document.createElementNS(ns,'text');
+    lbl.setAttribute('x',padL-3); lbl.setAttribute('y',y+3);
+    lbl.setAttribute('text-anchor','end'); lbl.setAttribute('fill','#6a6a8a'); lbl.setAttribute('font-size','7');
+    lbl.textContent = val>=1e6?`${(val/1e6).toFixed(1)}M`:val>=1e3?`${(val/1e3).toFixed(0)}k`:val.toFixed(1);
+    svg.appendChild(lbl);
+  }
+  for (let i = 0; i <= 3; i++) {
+    const x = padL + (i/3)*plotW, val = xMin + (i/3)*(xMax-xMin);
+    const lbl = document.createElementNS(ns,'text');
+    lbl.setAttribute('x',x); lbl.setAttribute('y',padT+plotH+11);
+    lbl.setAttribute('text-anchor','middle'); lbl.setAttribute('fill','#6a6a8a'); lbl.setAttribute('font-size','7');
+    lbl.textContent = val.toFixed(val<2?1:0); svg.appendChild(lbl);
+  }
+  const xLbl = document.createElementNS(ns,'text');
+  xLbl.setAttribute('x',padL+plotW/2); xLbl.setAttribute('y',h-1);
+  xLbl.setAttribute('text-anchor','middle'); xLbl.setAttribute('fill','#a0a0c0'); xLbl.setAttribute('font-size','7');
+  xLbl.textContent = xLabel; svg.appendChild(xLbl);
+  const yLbl = document.createElementNS(ns,'text');
+  yLbl.setAttribute('transform','rotate(-90)');
+  yLbl.setAttribute('x',-(padT+plotH/2)); yLbl.setAttribute('y',10);
+  yLbl.setAttribute('text-anchor','middle'); yLbl.setAttribute('fill','#a0a0c0'); yLbl.setAttribute('font-size','7');
+  yLbl.textContent='Ridership'; svg.appendChild(yLbl);
+
+  function drawOLS(pts, stroke, strokeWidth, dasharray) {
+    const n=pts.length; if(n<2) return;
+    const mx=pts.reduce((s,p)=>s+p.x,0)/n, my=pts.reduce((s,p)=>s+p.y,0)/n;
+    const ss=pts.reduce((s,p)=>s+(p.x-mx)**2,0), sp=pts.reduce((s,p)=>s+(p.x-mx)*(p.y-my),0);
+    if(ss===0) return;
+    const slope=sp/ss, intercept=my-slope*mx;
+    const line=document.createElementNS(ns,'line');
+    line.setAttribute('x1',xScale(xMin)); line.setAttribute('y1',yScale(slope*xMin+intercept));
+    line.setAttribute('x2',xScale(xMax)); line.setAttribute('y2',yScale(slope*xMax+intercept));
+    line.setAttribute('stroke',stroke); line.setAttribute('stroke-width',strokeWidth);
+    line.setAttribute('stroke-dasharray',dasharray); line.setAttribute('opacity','0.85');
+    svg.appendChild(line);
+  }
+  const byCluster = new Map();
+  points.forEach(p => {
+    if (!byCluster.has(p.label)) byCluster.set(p.label, {pts:[],color:p.color});
+    byCluster.get(p.label).pts.push(p);
+  });
+  byCluster.forEach(({pts,color}) => drawOLS(pts,color,'1.5','none'));
+  drawOLS(points,'#ffffff','1','4,2');
+  points.forEach(p => {
+    const c = document.createElementNS(ns,'circle');
+    c.setAttribute('cx',xScale(p.x)); c.setAttribute('cy',yScale(p.y));
+    c.setAttribute('r','2'); c.setAttribute('fill',p.color); c.setAttribute('opacity','0.75');
+    const title = document.createElementNS(ns,'title');
+    title.textContent=`${p.date}  ${xLabel}: ${p.x.toFixed(2)}  ridership: ${Math.round(p.y).toLocaleString()}`;
+    c.appendChild(title); svg.appendChild(c);
+  });
+}
+
+// ── Weather ────────────────────────────────────────────────────────────────
+
+function renderWeatherForPanel(side, cluster) {
+  const state = panelState[side];
+  const data  = clusteringData[state.dataset];
+  const mean  = a => a.length ? a.reduce((s,x)=>s+x,0)/a.length : 0;
+  const color = clusterColor(cluster.id);
+  const label = `C${cluster.id}`;
+
+  document.getElementById(`weather-title-${side}`).textContent =
+    `Weather — ${cluster.size} days`;
+
+  if (!weatherData) return;
+
+  const rains=[], temps=[], rainPoints=[], tempPoints=[];
+  cluster.dates.forEach(d => {
+    const w = weatherData[d]; if (!w) return;
+    const ridership = data?.date_totals?.[d];
+    if (w.rain_in != null) {
+      rains.push(w.rain_in);
+      if (ridership != null) rainPoints.push({x:w.rain_in, y:ridership, color, label, date:d});
+    }
+    if (w.temp_max_f != null) {
+      temps.push(w.temp_max_f);
+      if (ridership != null) tempPoints.push({x:w.temp_max_f, y:ridership, color, label, date:d});
+    }
+  });
+
+  const rainStats = rains.length
+    ? `n=${rains.length}  avg ${mean(rains).toFixed(2)}"  dry ${rains.filter(r=>r<0.01).length}d`
+    : 'no data';
+  const tempStats = temps.length
+    ? `n=${temps.length}  avg ${mean(temps).toFixed(1)}°F  ${Math.min(...temps).toFixed(0)}–${Math.max(...temps).toFixed(0)}°F`
+    : 'no data';
+
+  const colsEl = document.getElementById(`wcols-${side}`);
+
+  requestAnimationFrame(() => {
+    colsEl.style.display = 'flex';
+    if (state.weatherView === 'scatter') {
+        document.getElementById(`${side}-rain-label`).textContent = 'Rainfall (in) vs Ridership';
+        document.getElementById(`${side}-temp-label`).textContent = 'Temp (°F) vs Ridership';
+        renderScatterPlot(`${side}-rain-chart`, rainPoints, 'Rainfall (in)');
+        renderScatterPlot(`${side}-temp-chart`, tempPoints, 'Max temp (°F)');
+      } else {
+        document.getElementById(`${side}-rain-label`).textContent = 'Rainfall (in)';
+        document.getElementById(`${side}-temp-label`).textContent = 'Max temp (°F)';
+        renderHist(`${side}-rain-chart`, [{values:rains,color,label}], [0,0.01,0.1,0.25,0.5,1,2,4], v=>v===0?'0':v.toString());
+        renderHist(`${side}-temp-chart`, [{values:temps,color,label}], [20,30,40,50,60,70,80,90,100], v=>v.toString());
+      }
+      document.getElementById(`${side}-rain-stats`).innerHTML = `<span style="color:${color}">■</span> ${rainStats}`;
+      document.getElementById(`${side}-temp-stats`).innerHTML = `<span style="color:${color}">■</span> ${tempStats}`;
+  });
+}
+
+// ── Cluster tabs ───────────────────────────────────────────────────────────
+
+function renderClusterTabs(side, clusters, activeId) {
+  const container = document.getElementById(`cluster-tabs-${side}`);
+  container.innerHTML = '';
+  clusters.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'cl-btn' + (c.id === activeId ? ' active' : '');
+    btn.textContent = `C${c.id}`;
+    btn.style.background = clusterColor(c.id);
+    btn.onclick = () => { panelState[side].clusterId = c.id; updatePanel(side); };
+    container.appendChild(btn);
+  });
+}
+
+// ── Panel update ───────────────────────────────────────────────────────────
+
+function updatePanel(side) {
+  const state = panelState[side];
+  const data  = clusteringData[state.dataset];
+  if (!data?.clusters?.length) return;
+
+  if (!data.clusters.find(c => c.id === state.clusterId))
+    state.clusterId = data.clusters[0].id;
+
+  const cluster = data.clusters.find(c => c.id === state.clusterId);
+
+  document.querySelectorAll(`#ds-tabs-${side} .ds-btn`).forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.toLowerCase() === state.dataset);
+  });
+
+  renderClusterTabs(side, data.clusters, cluster.id);
+  if (side === 'left') renderCalendar();
+
+  document.getElementById(`chart-title-${side}`).textContent =
+    `${state.dataset === 'subway' ? 'Subway' : 'Citibike'} — Cluster ${cluster.id}  (${cluster.size} days)`;
+
+  requestAnimationFrame(() => {
+    renderChartForPanel(side, cluster, data.clusters);
+    renderWeatherForPanel(side, cluster);
+  });
+}
+
+// ── Event handlers ─────────────────────────────────────────────────────────
+
+function setDataset(side, ds) {
+  panelState[side].dataset   = ds;
+  panelState[side].clusterId = 1;
+  updatePanel(side);
+}
+
+function setWeatherView(side, view) {
+  panelState[side].weatherView = view;
+  document.getElementById(`wv-hist-${side}`).classList.toggle('active',    view === 'hist');
+  document.getElementById(`wv-scatter-${side}`).classList.toggle('active', view === 'scatter');
+  const state   = panelState[side];
+  const data    = clusteringData[state.dataset];
+  if (!data) return;
+  const cluster = data.clusters.find(c => c.id === state.clusterId);
+  if (cluster) renderWeatherForPanel(side, cluster);
+}
+
+// ── Data loading ───────────────────────────────────────────────────────────
+
+async function loadAll(k) {
+  document.getElementById('status').textContent = 'Loading…';
+  const subwayParams = new URLSearchParams({ k });
+  if (stationId) subwayParams.set('station_id', stationId);
+
+  const [subwayData, citibikeData, weather] = await Promise.all([
+    fetch(`/api/subway/clustering?${subwayParams}`).then(r => r.json()),
+    fetch(`/api/citibike/clustering?k=${k}`).then(r => r.json()),
+    weatherData ? Promise.resolve(weatherData) : fetch('/api/weather').then(r => r.json()),
+  ]);
+
+  clusteringData.subway   = subwayData;
+  clusteringData.citibike = citibikeData;
+  weatherData = weather;
+
+  document.getElementById('status').textContent =
+    `Subway ${subwayData.dates?.length??0} days  •  Citibike ${citibikeData.dates?.length??0} days`;
+
+  updatePanel('left');
+  updatePanel('right');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+const urlParams = new URLSearchParams(window.location.search);
+sharedK         = parseInt(urlParams.get('k') || '5');
+stationId       = urlParams.get('station_id') || '';
+const initDs    = urlParams.get('dataset')  || 'subway';
+const initCl    = parseInt(urlParams.get('cluster') || '1');
+
+panelState.left.dataset   = initDs;
+panelState.left.clusterId = initCl;
+
+document.getElementById('k-slider').value        = sharedK;
+document.getElementById('k-display').textContent = sharedK;
+
+document.getElementById('k-slider').addEventListener('input',  e => {
+  document.getElementById('k-display').textContent = e.target.value;
+});
+document.getElementById('k-slider').addEventListener('change', e => {
+  sharedK = parseInt(e.target.value);
+  loadAll(sharedK);
+});
+
+loadAll(sharedK);
+
+function navigateBack(e) {
+  e.preventDefault();
+  window.location.href = '/clustering';
+}
+</script>
+</body>
+</html>

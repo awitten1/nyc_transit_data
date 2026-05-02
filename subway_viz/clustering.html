@@ -102,8 +102,8 @@
     min-width: 0; min-height: 0; font-size: clamp(6px, calc(var(--cal-day-size) * 0.42), 8px);
   }
   #main.calendar-layout .event-dot {
-    width: clamp(2px, calc(var(--cal-day-size) * 0.18), 3.5px);
-    height: clamp(2px, calc(var(--cal-day-size) * 0.18), 3.5px);
+    width: clamp(4px, calc(var(--cal-day-size) * 0.32), 7px);
+    height: clamp(4px, calc(var(--cal-day-size) * 0.32), 7px);
   }
   #main.calendar-layout .weather-badge {
     width: clamp(6px, calc(var(--cal-day-size) * 0.38), 8px);
@@ -153,8 +153,8 @@
     pointer-events: none;
   }
   .event-dot {
-    width: 3px; height: 3px; border-radius: 50%;
-    border: 1px solid rgba(15,22,38,0.75);
+    width: 6px; height: 6px; border-radius: 50%;
+    border: 1px solid rgba(15,22,38,0.85);
     flex: 0 0 auto;
   }
   .weather-badge {
@@ -248,13 +248,13 @@
     display: flex; flex-direction: column; overflow: hidden;
   }
   .search-modal {
-    width: min(1040px, 94vw); height: min(760px, 88vh);
+    width: min(1600px, calc(100vw - 48px)); height: min(1100px, calc(100vh - 48px));
     background: #16213e; border: 1px solid #0f3460; border-radius: 6px;
     box-shadow: 0 20px 80px rgba(0,0,0,0.55);
     display: flex; flex-direction: column; overflow: hidden;
   }
   .confirm-body { padding: 14px 16px; overflow: auto; color: #cfcfe0; font-size: 12px; line-height: 1.45; }
-  .search-body { padding: 12px 14px; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+  .search-body { padding: 12px 14px; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
   .search-frame {
     width: 100%; flex: 1; min-height: 0; border: 1px solid #0f3460;
     border-radius: 4px; background: #0f1626;
@@ -379,10 +379,10 @@
           <div class="legend-group">
             <div class="legend-title">Events <span class="legend-note">bottom dots</span></div>
             <div class="legend-items">
-              <span class="legend-item-inline"><span class="event-dot" style="background:#f97316"></span>Sports</span>
-              <span class="legend-item-inline"><span class="event-dot" style="background:#06b6d4"></span>Concert</span>
+              <span class="legend-item-inline"><span class="event-dot" style="background:#ec4899"></span>Sports</span>
+              <span class="legend-item-inline"><span class="event-dot" style="background:#22c55e"></span>Concert</span>
               <span class="legend-item-inline"><span class="event-dot" style="background:#ef4444"></span>Mega</span>
-              <span class="legend-item-inline"><span class="event-dot" style="background:#a78bfa"></span>Other</span>
+              <span class="legend-item-inline"><span class="event-dot" style="background:#ffffff"></span>Other</span>
             </div>
           </div>
           <div class="legend-group">
@@ -518,7 +518,7 @@
 </div>
 
 <script>
-const COLORS = ['#e94560','#00d2ff','#ffc857','#81ecec','#6c5ce7','#55efc4','#fd79a8','#fdcb6e','#74b9ff','#a29bfe','#ff7675','#55a3ff'];
+const COLORS = ['#14b8a6','#00d2ff','#ffc857','#81ecec','#6c5ce7','#84cc16','#d946ef','#fdcb6e','#74b9ff','#a29bfe','#f97316','#55a3ff'];
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const WEEKDAYS = ['M','T','W','T','F','S','S']; // Monday-first
 
@@ -545,10 +545,10 @@ let stationPickerMap = null;
 let stationMarkerLayer = null;
 const stationMarkers = new Map();
 const EVENT_COLORS = {
-  Sports: '#f97316',
-  Concert: '#06b6d4',
+  Sports: '#ec4899',
+  Concert: '#22c55e',
   Mega: '#ef4444',
-  Other: '#a78bfa'
+  Other: '#ffffff'
 };
 const WEATHER_TYPES = {
   Clear: { color: '#f59e0b', label: 'C' },

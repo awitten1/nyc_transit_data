@@ -24,7 +24,6 @@ SETLIST_FM_API_KEY = "yorQoElIZGFtJDUh1Ej0KJ2ujnYAj7PlCFsg"
 SETLIST_VENUES = {
     "Madison Square Garden": "23d63cc7",
     "Barclays Center": "2bd77066",
-    "MetLife Stadium": "1bd72160",
     "Yankee Stadium": "5bd38390",
     "Citi Field": "63d1eed3",
 }
@@ -58,10 +57,7 @@ ESPN_SPORTS_CONFIG = [
         "sport_path": "football/nfl",
         "seasons": ["2024", "2025", "2026"],
         "genre": "Sports - Football",
-        "teams": {
-            "nyg": {"name": "New York Giants", "venue": "MetLife Stadium"},
-            "nyj": {"name": "New York Jets", "venue": "MetLife Stadium"},
-        },
+        "teams": {},
     },
     {
         "league": "NHL",
@@ -71,7 +67,6 @@ ESPN_SPORTS_CONFIG = [
         "teams": {
             "nyr": {"name": "New York Rangers", "venue": "Madison Square Garden"},
             "nyi": {"name": "New York Islanders", "venue": "UBS Arena"},
-            "nj": {"name": "New Jersey Devils", "venue": "Prudential Center"},
         },
     },
 ]

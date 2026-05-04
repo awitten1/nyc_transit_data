@@ -8,10 +8,10 @@
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; }
+  html, body { min-height: 100%; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-         background: #1a1a2e; color: #e0e0e0; height: 100vh; padding: 14px 20px;
-         overflow: hidden; display: flex; flex-direction: column; }
+         background: #1a1a2e; color: #e0e0e0; min-height: 100vh; padding: 14px 20px;
+         overflow-y: auto; display: flex; flex-direction: column; }
   h1 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
   .sub { font-size: 12px; color: #a0a0c0; margin-bottom: 12px; flex-shrink: 0; }
   a { color: #00d2ff; }
@@ -36,7 +36,7 @@
 
   #main {
     display: grid; grid-template-columns: minmax(420px, 1fr) minmax(420px, 1fr);
-    grid-template-rows: minmax(0, 1fr) minmax(190px, auto); gap: 16px; flex: 1; min-height: 0;
+    grid-template-rows: auto auto; gap: 16px; flex: 1 0 auto; min-height: 0;
   }
   #main.calendar-layout .viz-panel,
   #main.map-layout .viz-panel { grid-column: 1; grid-row: 1 / span 2; }
@@ -46,7 +46,7 @@
   #main.map-layout .weather-panel-wrap { grid-column: 2; grid-row: 2; }
   .panel {
     background: #16213e; border: 1px solid #0f3460; border-radius: 6px; padding: 16px;
-    min-height: 0; overflow: hidden; display: flex; flex-direction: column;
+    min-height: 0; overflow: visible; display: flex; flex-direction: column;
   }
   .panel-scroll { min-height: 0; overflow: hidden; padding-right: 2px; }
   .viz-panel .panel-scroll { flex: 1; display: flex; flex-direction: column; }
@@ -2406,10 +2406,10 @@ window.addEventListener('resize', () => {
 loadWeather();
 loadStations().then(() => {
   const urlParams = new URLSearchParams(window.location.search);
-  const stationId = urlParams.get('station_id');
-  if (stationId) {
-    manualStationIds = [stationId];
-    document.getElementById('station-select').value = stationId;
+  const idsParam = urlParams.get('station_ids') || urlParams.get('station_id');
+  if (idsParam) {
+    manualStationIds = idsParam.split(',').map(s => s.trim()).filter(Boolean);
+    document.getElementById('station-select').value = manualStationIds[0] || '';
   }
   updateStationButton();
   load(5);

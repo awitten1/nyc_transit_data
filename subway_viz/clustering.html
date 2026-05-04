@@ -99,9 +99,9 @@
   #main.calendar-layout .calendar-blank,
   #main.calendar-layout .day {
     width: var(--cal-day-size); height: var(--cal-day-size); aspect-ratio: auto;
-    min-width: 0; min-height: 0; font-size: clamp(6px, calc(var(--cal-day-size) * 0.42), 8px);
+    min-width: 0; min-height: 0; font-size: clamp(7px, calc(var(--cal-day-size) * 0.45), 9px);
   }
-  #main.calendar-layout .event-dot {
+  #main.calendar-layout .event-dots .event-dot {
     width: clamp(4px, calc(var(--cal-day-size) * 0.32), 7px);
     height: clamp(4px, calc(var(--cal-day-size) * 0.32), 7px);
   }
@@ -157,6 +157,7 @@
     border: 1px solid rgba(15,22,38,0.85);
     flex: 0 0 auto;
   }
+  .legend-item-inline .event-dot { width: 10px; height: 10px; }
   .weather-badge {
     position: absolute; top: 0; right: 0;
     width: 7px; height: 7px; padding: 0; border-radius: 0;
@@ -340,6 +341,7 @@
 <div id="controls">
   <label>Station:</label>
   <button type="button" class="station-pick-btn" id="open-station-picker">System-wide (all stations)</button>
+  <button type="button" class="wv-btn" id="clear-station-cluster" title="Clear station selection and return to system-wide">Clear</button>
   <select id="station-select" style="display:none;">
     <option value="">System-wide (all stations)</option>
   </select>
@@ -381,7 +383,7 @@
             <div class="legend-items">
               <span class="legend-item-inline"><span class="event-dot" style="background:#ec4899"></span>Sports</span>
               <span class="legend-item-inline"><span class="event-dot" style="background:#22c55e"></span>Concert</span>
-              <span class="legend-item-inline"><span class="event-dot" style="background:#ef4444"></span>Mega</span>
+              <span class="legend-item-inline"><span class="event-dot" style="background:#ef4444"></span>Mega (high-impact)</span>
               <span class="legend-item-inline"><span class="event-dot" style="background:#ffffff"></span>Other</span>
             </div>
           </div>
@@ -451,9 +453,10 @@
           <input type="range" id="event-radius" min="0.1" max="3" step="0.1" value="0.85">
           <span id="event-radius-value">0.85 mi</span>
         </label>
+        <label class="event-check"><input type="checkbox" id="event-filter-all" checked><b>All events</b></label>
         <label class="event-check"><input type="checkbox" class="event-filter" value="Sports" checked>Sports</label>
         <label class="event-check"><input type="checkbox" class="event-filter" value="Concert" checked>Concert</label>
-        <label class="event-check"><input type="checkbox" class="event-filter" value="Mega" checked>Mega</label>
+        <label class="event-check"><input type="checkbox" class="event-filter" value="Mega" checked>Mega (high-impact)</label>
         <label class="event-check"><input type="checkbox" class="event-filter" value="Other" checked>Other</label>
         <input class="events-search" id="event-search" type="search" placeholder="Search events, venues, genres">
       </div>
@@ -2307,6 +2310,20 @@ document.getElementById('tree-cut-reset').addEventListener('click', () => {
 });
 
 document.getElementById('open-station-picker').addEventListener('click', openStationPicker);
+document.getElementById('clear-station-cluster').addEventListener('click', () => {
+  manualStationIds = [];
+  pendingManualStationIds = [];
+  activeEventStationIds = [];
+  activeEventName = '';
+  document.getElementById('station-select').value = '';
+  highlightClusters = new Set();
+  hoveredDate = null;
+  nearbyEvents = [];
+  updateStationButton();
+  load(parseInt(document.getElementById('k-slider').value));
+  loadNearbyEvents();
+  renderWeather();
+});
 document.getElementById('station-picker-close').addEventListener('click', closeStationPicker);
 document.getElementById('station-picker-cancel').addEventListener('click', closeStationPicker);
 document.getElementById('station-picker-apply').addEventListener('click', applyStationPickerSelection);
@@ -2326,9 +2343,16 @@ document.getElementById('event-radius').addEventListener('change', (e) => {
 });
 document.querySelectorAll('.event-filter').forEach(input => {
   input.addEventListener('change', () => {
+    const all = Array.from(document.querySelectorAll('.event-filter'));
+    document.getElementById('event-filter-all').checked = all.every(i => i.checked);
     renderCalendar();
     renderEvents();
   });
+});
+document.getElementById('event-filter-all').addEventListener('change', (ev) => {
+  document.querySelectorAll('.event-filter').forEach(i => { i.checked = ev.target.checked; });
+  renderCalendar();
+  renderEvents();
 });
 document.querySelectorAll('.weather-filter').forEach(input => {
   input.addEventListener('change', () => {

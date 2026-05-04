@@ -17,8 +17,19 @@ logger = logging.getLogger(__name__)
 # ==========================================
 # CONFIGURATION
 # ==========================================
-# TODO: Insert your Setlist.fm API Key here
-SETLIST_FM_API_KEY = "yorQoElIZGFtJDUh1Ej0KJ2ujnYAj7PlCFsg"
+# Setlist.fm API key. Provide via the SETLIST_FM_API_KEY environment variable
+# or a .setlist_fm_key file in this directory (single line, no quotes).
+def _load_setlist_fm_key():
+    env_key = os.getenv("SETLIST_FM_API_KEY")
+    if env_key:
+        return env_key.strip()
+    key_file = os.path.join(os.path.dirname(__file__), ".setlist_fm_key")
+    if os.path.isfile(key_file):
+        with open(key_file) as f:
+            return f.read().strip()
+    return ""
+
+SETLIST_FM_API_KEY = _load_setlist_fm_key()
 
 # Setlist.fm specific venue IDs
 SETLIST_VENUES = {
@@ -353,8 +364,9 @@ def fetch_espn_home_games(year="2025", sports_config=None):
 # 2. CONCERT DATA (Setlist.fm API)
 # ==========================================
 def fetch_setlist_concerts(api_key, venues_dict, year="2025"):
-    if api_key == "YOUR_SETLIST_FM_KEY":
-        print("Setlist.fm API key missing. Skipping concert data.")
+    if not api_key or api_key == "YOUR_SETLIST_FM_KEY":
+        print("Setlist.fm API key missing. Set SETLIST_FM_API_KEY env var "
+              "or create a .setlist_fm_key file. Skipping concert data.")
         return []
 
     print("Fetching concert history from Setlist.fm...")
@@ -496,7 +508,7 @@ def fetch_setlist_concerts(api_key, venues_dict, year="2025"):
                     {
                         "event_name": f"Concert: {artist_name}",
                         "date": formatted_date,
-                        "time": "19:30:00",  # Setlist doesn't provide exact start times, assuming evening
+                        "time": "",
                         "venue": venue_name,
                         "genre": "Concert - Live Music",
                     }

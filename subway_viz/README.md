@@ -1,10 +1,10 @@
-# Subway O-D Explorer
+# Subway Ridership Visualizer
 
-Interactive dual-map visualization of NYC subway origin-destination ridership (2025).
+An interactive subway ridership visualizer with clustering and O-D visualization.
 
 ## Setup
 
-Using conda (recommended — installs the `shapely` geometry dep cleanly):
+Using conda:
 
 ```bash
 conda env create -f subway_viz/environment.yml
@@ -29,6 +29,5 @@ Open http://localhost:8765
 
 - **Left map**: drag to select origin stations (toggle Select/Pan mode in toolbar)
 - **Right map**: shows destination stations sized and colored by ridership volume
-- Click individual stations to toggle selection
-- Use filters (month, day, hour range) to narrow the data
-- Switch "Select Origins" / "Select Destinations" to reverse the direction
+- Click individual stations or click and drag to select multiple stations.
+- Click "clusters" on the top right to see clusters.

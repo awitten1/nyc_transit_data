@@ -1,0 +1,12 @@
+name: subway-viz
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - fastapi
+  - uvicorn
+  - python-duckdb
+  - pandas
+  - numpy
+  - scipy
+  - shapely

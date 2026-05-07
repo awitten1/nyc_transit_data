@@ -4,8 +4,17 @@ Interactive dual-map visualization of NYC subway origin-destination ridership (2
 
 ## Setup
 
+Using conda (recommended — installs the `shapely` geometry dep cleanly):
+
 ```bash
-pip install fastapi uvicorn duckdb
+conda env create -f subway_viz/environment.yml
+conda activate subway-viz
+```
+
+Or with pip:
+
+```bash
+pip install fastapi uvicorn duckdb pandas numpy scipy shapely
 ```
 
 ## Run

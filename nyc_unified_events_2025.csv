@@ -1,0 +1,845 @@
+event_name,date,time,venue,genre
+NBA: Utah Jazz at New York Knicks,2025-01-01,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Boston Bruins at New York Rangers,2025-01-02,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: Toronto Maple Leafs at New York Islanders,2025-01-02,19:30:00,UBS Arena,Sports - Hockey
+NBA: Philadelphia 76ers at Brooklyn Nets,2025-01-04,18:00:00,Barclays Center,Sports - Basketball
+NFL: Miami Dolphins at New York Jets,2025-01-05,16:25:00,MetLife Stadium,Sports - Football
+NBA: Indiana Pacers at Brooklyn Nets,2025-01-06,19:30:00,Barclays Center,Sports - Basketball
+NBA: Orlando Magic at New York Knicks,2025-01-06,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Dallas Stars at New York Rangers,2025-01-07,19:00:00,Madison Square Garden,Sports - Hockey
+NBA: Toronto Raptors at New York Knicks,2025-01-08,19:30:00,Madison Square Garden,Sports - Basketball
+NBA: Detroit Pistons at Brooklyn Nets,2025-01-08,19:30:00,Barclays Center,Sports - Basketball
+Concert: LAUNDRY DAY,2025-01-08,19:30:00,Madison Square Garden,Concert - Live Music
+NHL: New Jersey Devils at New York Rangers,2025-01-09,19:00:00,Madison Square Garden,Sports - Hockey
+NBA: Oklahoma City Thunder at New York Knicks,2025-01-10,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Tampa Bay Lightning at New Jersey Devils,2025-01-11,19:00:00,Prudential Center,Sports - Hockey
+NBA: Milwaukee Bucks at New York Knicks,2025-01-12,15:00:00,Madison Square Garden,Sports - Basketball
+NBA: Detroit Pistons at New York Knicks,2025-01-13,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Florida Panthers at New Jersey Devils,2025-01-14,19:30:00,Prudential Center,Sports - Hockey
+NHL: Ottawa Senators at New York Islanders,2025-01-14,19:30:00,UBS Arena,Sports - Hockey
+NHL: Philadelphia Flyers at New York Islanders,2025-01-16,19:30:00,UBS Arena,Sports - Hockey
+NBA: Minnesota Timberwolves at New York Knicks,2025-01-17,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Philadelphia Flyers at New Jersey Devils,2025-01-18,12:30:00,Prudential Center,Sports - Hockey
+NHL: Columbus Blue Jackets at New York Rangers,2025-01-18,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: San Jose Sharks at New York Islanders,2025-01-18,19:30:00,UBS Arena,Sports - Hockey
+NHL: Ottawa Senators at New Jersey Devils,2025-01-19,13:00:00,Prudential Center,Sports - Hockey
+NBA: Atlanta Hawks at New York Knicks,2025-01-20,15:00:00,Madison Square Garden,Sports - Basketball
+NHL: Columbus Blue Jackets at New York Islanders,2025-01-20,19:30:00,UBS Arena,Sports - Hockey
+NHL: Ottawa Senators at New York Rangers,2025-01-21,19:00:00,Madison Square Garden,Sports - Hockey
+NBA: New York Knicks at Brooklyn Nets,2025-01-21,19:30:00,Barclays Center,Sports - Basketball
+NHL: Boston Bruins at New Jersey Devils,2025-01-22,19:00:00,Prudential Center,Sports - Hockey
+NBA: Phoenix Suns at Brooklyn Nets,2025-01-22,19:30:00,Barclays Center,Sports - Basketball
+NHL: Philadelphia Flyers at New York Rangers,2025-01-23,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: Philadelphia Flyers at New York Islanders,2025-01-24,19:30:00,UBS Arena,Sports - Hockey
+NBA: Miami Heat at Brooklyn Nets,2025-01-25,18:00:00,Barclays Center,Sports - Basketball
+NBA: Sacramento Kings at New York Knicks,2025-01-25,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Carolina Hurricanes at New York Islanders,2025-01-25,19:30:00,UBS Arena,Sports - Hockey
+NHL: Colorado Avalanche at New York Rangers,2025-01-26,13:00:00,Madison Square Garden,Sports - Hockey
+NBA: Sacramento Kings at Brooklyn Nets,2025-01-27,19:30:00,Barclays Center,Sports - Basketball
+NBA: Memphis Grizzlies at New York Knicks,2025-01-27,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Carolina Hurricanes at New York Rangers,2025-01-28,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: Colorado Avalanche at New York Islanders,2025-01-28,19:30:00,UBS Arena,Sports - Hockey
+NHL: Philadelphia Flyers at New Jersey Devils,2025-01-29,19:00:00,Prudential Center,Sports - Hockey
+NBA: Denver Nuggets at New York Knicks,2025-01-29,19:30:00,Madison Square Garden,Sports - Basketball
+NBA: Los Angeles Lakers at New York Knicks,2025-02-01,20:30:00,Madison Square Garden,Sports - Basketball
+NHL: Vegas Golden Knights at New York Rangers,2025-02-02,18:00:00,Madison Square Garden,Sports - Hockey
+NBA: Houston Rockets at New York Knicks,2025-02-03,19:30:00,Madison Square Garden,Sports - Basketball
+NBA: Houston Rockets at Brooklyn Nets,2025-02-04,19:30:00,Barclays Center,Sports - Basketball
+NHL: Vegas Golden Knights at New York Islanders,2025-02-04,19:30:00,UBS Arena,Sports - Hockey
+NHL: Boston Bruins at New York Rangers,2025-02-05,19:00:00,Madison Square Garden,Sports - Hockey
+NBA: Washington Wizards at Brooklyn Nets,2025-02-05,19:30:00,Barclays Center,Sports - Basketball
+NHL: Vegas Golden Knights at New Jersey Devils,2025-02-06,19:00:00,Prudential Center,Sports - Hockey
+Concert: Hans Zimmer,2025-02-06,19:30:00,Barclays Center,Concert - Live Music
+NHL: Pittsburgh Penguins at New York Rangers,2025-02-07,19:00:00,Madison Square Garden,Sports - Hockey
+NBA: Miami Heat at Brooklyn Nets,2025-02-07,19:30:00,Barclays Center,Sports - Basketball
+NBA: Boston Celtics at New York Knicks,2025-02-08,20:30:00,Madison Square Garden,Sports - Basketball
+NBA: Charlotte Hornets at Brooklyn Nets,2025-02-10,19:30:00,Barclays Center,Sports - Basketball
+NBA: Philadelphia 76ers at Brooklyn Nets,2025-02-12,19:30:00,Barclays Center,Sports - Basketball
+NBA: Atlanta Hawks at New York Knicks,2025-02-12,19:30:00,Madison Square Garden,Sports - Basketball
+NBA: Cleveland Cavaliers at Brooklyn Nets,2025-02-20,19:30:00,Barclays Center,Sports - Basketball
+NBA: Chicago Bulls at New York Knicks,2025-02-20,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Dallas Stars at New Jersey Devils,2025-02-22,18:00:00,Prudential Center,Sports - Hockey
+Concert: JJ Lin,2025-02-22,19:30:00,Barclays Center,Concert - Live Music
+NHL: Dallas Stars at New York Islanders,2025-02-23,19:30:00,UBS Arena,Sports - Hockey
+NHL: New York Rangers at New York Islanders,2025-02-25,19:30:00,UBS Arena,Sports - Hockey
+NBA: Philadelphia 76ers at New York Knicks,2025-02-26,19:00:00,Madison Square Garden,Sports - Basketball
+NBA: Oklahoma City Thunder at Brooklyn Nets,2025-02-26,19:30:00,Barclays Center,Sports - Basketball
+NHL: Toronto Maple Leafs at New York Rangers,2025-02-28,19:00:00,Madison Square Garden,Sports - Hockey
+NBA: Portland Trail Blazers at Brooklyn Nets,2025-02-28,19:30:00,Barclays Center,Sports - Basketball
+NHL: Nashville Predators at New York Islanders,2025-03-01,12:30:00,UBS Arena,Sports - Hockey
+NYC Permit: QUEENS COUNTY ST. PATRICKS DAY PARADE,2025-03-01,13:00:00,NEWPORT AVENUE between BEACH  129 STREET and BEACH  136 STREET,Mega-Event - Street Closure
+NYC Permit: Richmond County St. Patrick's Day Parade,2025-03-02,12:30:00,FOREST AVENUE between HART BOULEVARD and JEWETT AVENUE,Mega-Event - Street Closure
+NHL: Nashville Predators at New York Rangers,2025-03-02,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: New York Islanders at New York Rangers,2025-03-03,19:00:00,Madison Square Garden,Sports - Hockey
+NBA: Golden State Warriors at New York Knicks,2025-03-04,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Winnipeg Jets at New York Islanders,2025-03-04,19:30:00,UBS Arena,Sports - Hockey
+NHL: Washington Capitals at New York Rangers,2025-03-05,19:30:00,Madison Square Garden,Sports - Hockey
+NBA: Golden State Warriors at Brooklyn Nets,2025-03-06,19:30:00,Barclays Center,Sports - Basketball
+NHL: Winnipeg Jets at New Jersey Devils,2025-03-07,19:00:00,Prudential Center,Sports - Hockey
+Concert: Dom Dolla,2025-03-07,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Fcukers,2025-03-08,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Tiga,2025-03-08,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Dom Dolla,2025-03-08,19:30:00,Madison Square Garden,Concert - Live Music
+NHL: Columbus Blue Jackets at New York Rangers,2025-03-09,18:00:00,Madison Square Garden,Sports - Hockey
+Concert: Zhou Shen,2025-03-09,19:30:00,Barclays Center,Concert - Live Music
+NBA: Los Angeles Lakers at Brooklyn Nets,2025-03-10,19:30:00,Barclays Center,Sports - Basketball
+Concert: The Brothers,2025-03-10,19:30:00,Madison Square Garden,Concert - Live Music
+NHL: Columbus Blue Jackets at New Jersey Devils,2025-03-11,19:00:00,Prudential Center,Sports - Hockey
+NHL: Edmonton Oilers at New Jersey Devils,2025-03-13,19:30:00,Prudential Center,Sports - Hockey
+Concert: j‐hope,2025-03-13,19:30:00,Barclays Center,Concert - Live Music
+NHL: Edmonton Oilers at New York Islanders,2025-03-14,19:30:00,UBS Arena,Sports - Hockey
+Concert: j‐hope,2025-03-14,19:30:00,Barclays Center,Concert - Live Music
+NBA: Boston Celtics at Brooklyn Nets,2025-03-15,18:00:00,Barclays Center,Sports - Basketball
+NYC Permit: Bronx St. Patrick's Day Parade,2025-03-16,12:00:00,LAFAYETTE AVENUE between EAST TREMONT AVENUE and SWINTON AVENUE,Mega-Event - Street Closure
+NBA: Atlanta Hawks at Brooklyn Nets,2025-03-16,18:00:00,Barclays Center,Sports - Basketball
+NHL: Edmonton Oilers at New York Rangers,2025-03-16,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: Florida Panthers at New York Islanders,2025-03-16,19:30:00,UBS Arena,Sports - Hockey
+NBA: Miami Heat at New York Knicks,2025-03-17,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Calgary Flames at New York Rangers,2025-03-18,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: Calgary Flames at New Jersey Devils,2025-03-20,19:00:00,Prudential Center,Sports - Hockey
+NHL: Toronto Maple Leafs at New York Rangers,2025-03-20,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: Montreal Canadiens at New York Islanders,2025-03-20,19:30:00,UBS Arena,Sports - Hockey
+Concert: Disturbed,2025-03-21,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Sevendust,2025-03-21,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Three Days Grace,2025-03-21,19:30:00,Madison Square Garden,Concert - Live Music
+NHL: Vancouver Canucks at New York Rangers,2025-03-22,13:00:00,Madison Square Garden,Sports - Hockey
+NHL: Calgary Flames at New York Islanders,2025-03-22,16:00:00,UBS Arena,Sports - Hockey
+NHL: Ottawa Senators at New Jersey Devils,2025-03-22,19:00:00,Prudential Center,Sports - Hockey
+NBA: Washington Wizards at New York Knicks,2025-03-22,20:00:00,Madison Square Garden,Sports - Basketball
+NYC Permit: Bay Ridge St. Patricks Day Parade,2025-03-23,13:00:00,MARINE AVENUE between THIRD AVENUE and FOURTH AVENUE,Mega-Event - Street Closure
+NBA: Dallas Mavericks at Brooklyn Nets,2025-03-24,19:30:00,Barclays Center,Sports - Basketball
+NHL: Vancouver Canucks at New Jersey Devils,2025-03-24,19:30:00,Prudential Center,Sports - Hockey
+NHL: Columbus Blue Jackets at New York Islanders,2025-03-24,19:30:00,UBS Arena,Sports - Hockey
+NBA: Dallas Mavericks at New York Knicks,2025-03-25,19:30:00,Madison Square Garden,Sports - Basketball
+NBA: Toronto Raptors at Brooklyn Nets,2025-03-26,19:30:00,Barclays Center,Sports - Basketball
+NBA: LA Clippers at New York Knicks,2025-03-26,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Vancouver Canucks at New York Islanders,2025-03-26,19:30:00,UBS Arena,Sports - Hockey
+MLB: Milwaukee Brewers at New York Yankees,2025-03-27,15:05:00,Yankee Stadium,Sports - Baseball
+Concert: Gregory Alan Isakov,2025-03-27,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Nathaniel Rateliff & The Night Sweats,2025-03-27,19:30:00,Madison Square Garden,Concert - Live Music
+NBA: LA Clippers at Brooklyn Nets,2025-03-28,19:30:00,Barclays Center,Sports - Basketball
+NYC Permit: Gerritsen Beach St. Patricks Day Parade,2025-03-29,12:00:00,WHITNEY AVENUE between GERRITSEN AVENUE and PLUMB    1 STREET,Mega-Event - Street Closure
+MLB: Milwaukee Brewers at New York Yankees,2025-03-29,13:05:00,Yankee Stadium,Sports - Baseball
+Concert: Redman,2025-03-29,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: G.E.M.,2025-03-29,19:30:00,Barclays Center,Concert - Live Music
+MLB: Milwaukee Brewers at New York Yankees,2025-03-30,13:35:00,Yankee Stadium,Sports - Baseball
+NBA: Portland Trail Blazers at New York Knicks,2025-03-30,18:00:00,Madison Square Garden,Sports - Basketball
+Concert: J Balvin,2025-03-30,19:30:00,Barclays Center,Concert - Live Music
+NHL: Minnesota Wild at New Jersey Devils,2025-03-31,19:00:00,Prudential Center,Sports - Hockey
+MLB: Arizona Diamondbacks at New York Yankees,2025-04-01,19:05:00,Yankee Stadium,Sports - Baseball
+NBA: Philadelphia 76ers at New York Knicks,2025-04-01,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Tampa Bay Lightning at New York Islanders,2025-04-01,19:30:00,UBS Arena,Sports - Hockey
+NHL: Minnesota Wild at New York Rangers,2025-04-02,19:00:00,Madison Square Garden,Sports - Hockey
+MLB: Arizona Diamondbacks at New York Yankees,2025-04-02,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: John Brancy,2025-04-02,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Arizona Diamondbacks at New York Yankees,2025-04-03,19:05:00,Yankee Stadium,Sports - Baseball
+NBA: Minnesota Timberwolves at Brooklyn Nets,2025-04-03,19:30:00,Barclays Center,Sports - Basketball
+Concert: The Mars Volta,2025-04-03,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Fleshwater,2025-04-03,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Deftones,2025-04-03,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Wyn Starks,2025-04-03,19:30:00,Barclays Center,Concert - Live Music
+MLB: Toronto Blue Jays at New York Mets,2025-04-04,15:10:00,Citi Field,Sports - Baseball
+NHL: Minnesota Wild at New York Islanders,2025-04-04,19:30:00,UBS Arena,Sports - Hockey
+Concert: Kylie Minogue,2025-04-04,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Romy,2025-04-04,19:30:00,Madison Square Garden,Concert - Live Music
+NHL: New York Rangers at New Jersey Devils,2025-04-05,12:30:00,Prudential Center,Sports - Hockey
+MLB: Toronto Blue Jays at New York Mets,2025-04-05,19:10:00,Citi Field,Sports - Baseball
+Concert: Romy,2025-04-05,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Kylie Minogue,2025-04-05,19:30:00,Madison Square Garden,Concert - Live Music
+NHL: Washington Capitals at New York Islanders,2025-04-06,12:30:00,UBS Arena,Sports - Hockey
+MLB: Toronto Blue Jays at New York Mets,2025-04-06,13:40:00,Citi Field,Sports - Baseball
+NBA: Toronto Raptors at Brooklyn Nets,2025-04-06,15:30:00,Barclays Center,Sports - Basketball
+NBA: Phoenix Suns at New York Knicks,2025-04-06,19:00:00,Madison Square Garden,Sports - Basketball
+NHL: Tampa Bay Lightning at New York Rangers,2025-04-07,19:00:00,Madison Square Garden,Sports - Hockey
+MLB: Miami Marlins at New York Mets,2025-04-07,19:10:00,Citi Field,Sports - Baseball
+MLB: Miami Marlins at New York Mets,2025-04-08,16:10:00,Citi Field,Sports - Baseball
+NHL: Boston Bruins at New Jersey Devils,2025-04-08,19:00:00,Prudential Center,Sports - Hockey
+NBA: New Orleans Pelicans at Brooklyn Nets,2025-04-08,19:30:00,Barclays Center,Sports - Basketball
+NBA: Boston Celtics at New York Knicks,2025-04-08,19:30:00,Madison Square Garden,Sports - Basketball
+MLB: Miami Marlins at New York Mets,2025-04-09,13:10:00,Citi Field,Sports - Baseball
+NHL: Philadelphia Flyers at New York Rangers,2025-04-09,19:30:00,Madison Square Garden,Sports - Hockey
+NBA: Atlanta Hawks at Brooklyn Nets,2025-04-10,19:30:00,Barclays Center,Sports - Basketball
+NHL: New York Rangers at New York Islanders,2025-04-10,19:30:00,UBS Arena,Sports - Hockey
+Concert: Mary J. Blige,2025-04-10,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Ne‐Yo,2025-04-10,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Mario,2025-04-10,19:30:00,Madison Square Garden,Concert - Live Music
+NHL: Pittsburgh Penguins at New Jersey Devils,2025-04-11,19:00:00,Prudential Center,Sports - Hockey
+MLB: San Francisco Giants at New York Yankees,2025-04-11,19:05:00,Yankee Stadium,Sports - Baseball
+NBA: Cleveland Cavaliers at New York Knicks,2025-04-11,19:30:00,Madison Square Garden,Sports - Basketball
+Concert: Vybz Kartel,2025-04-11,19:30:00,Barclays Center,Concert - Live Music
+MLB: San Francisco Giants at New York Yankees,2025-04-12,15:05:00,Yankee Stadium,Sports - Baseball
+NBA: New York Knicks at Brooklyn Nets,2025-04-13,13:00:00,Barclays Center,Sports - Basketball
+NHL: New York Islanders at New Jersey Devils,2025-04-13,13:00:00,Prudential Center,Sports - Hockey
+MLB: San Francisco Giants at New York Yankees,2025-04-13,13:35:00,Yankee Stadium,Sports - Baseball
+MLB: Kansas City Royals at New York Yankees,2025-04-14,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Kansas City Royals at New York Yankees,2025-04-15,19:05:00,Yankee Stadium,Sports - Baseball
+NHL: Washington Capitals at New York Islanders,2025-04-15,19:30:00,UBS Arena,Sports - Hockey
+Concert: The Brothers,2025-04-15,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Kansas City Royals at New York Yankees,2025-04-16,19:05:00,Yankee Stadium,Sports - Baseball
+NHL: Detroit Red Wings at New Jersey Devils,2025-04-16,19:30:00,Prudential Center,Sports - Hockey
+Concert: The Brothers,2025-04-16,19:30:00,Madison Square Garden,Concert - Live Music
+NHL: Tampa Bay Lightning at New York Rangers,2025-04-17,19:00:00,Madison Square Garden,Sports - Hockey
+MLB: St. Louis Cardinals at New York Mets,2025-04-17,19:10:00,Citi Field,Sports - Baseball
+Concert: Nick Cave & the Bad Seeds,2025-04-17,19:30:00,Barclays Center,Concert - Live Music
+Concert: St. Vincent,2025-04-17,19:30:00,Barclays Center,Concert - Live Music
+MLB: St. Louis Cardinals at New York Mets,2025-04-18,19:10:00,Citi Field,Sports - Baseball
+MLB: St. Louis Cardinals at New York Mets,2025-04-19,16:05:00,Citi Field,Sports - Baseball
+NBA: Detroit Pistons at New York Knicks,2025-04-19,18:00:00,Madison Square Garden,Sports - Basketball
+Concert: Jadakiss,2025-04-19,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: St. Louis Cardinals at New York Mets,2025-04-20,13:40:00,Citi Field,Sports - Baseball
+MLB: Philadelphia Phillies at New York Mets,2025-04-21,19:10:00,Citi Field,Sports - Baseball
+NBA: Detroit Pistons at New York Knicks,2025-04-21,19:30:00,Madison Square Garden,Sports - Basketball
+MLB: Philadelphia Phillies at New York Mets,2025-04-22,19:10:00,Citi Field,Sports - Baseball
+MLB: Philadelphia Phillies at New York Mets,2025-04-23,13:10:00,Citi Field,Sports - Baseball
+MLB: Toronto Blue Jays at New York Yankees,2025-04-25,19:05:00,Yankee Stadium,Sports - Baseball
+NHL: Carolina Hurricanes at New Jersey Devils,2025-04-25,20:00:00,Prudential Center,Sports - Hockey
+MLB: Toronto Blue Jays at New York Yankees,2025-04-26,13:05:00,Yankee Stadium,Sports - Baseball
+Concert: Beetlebat,2025-04-26,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Toronto Blue Jays at New York Yankees,2025-04-27,13:35:00,Yankee Stadium,Sports - Baseball
+MLB: Toronto Blue Jays at New York Yankees,2025-04-27,13:40:00,Yankee Stadium,Sports - Baseball
+NHL: Carolina Hurricanes at New Jersey Devils,2025-04-27,15:50:00,Prudential Center,Sports - Hockey
+MLB: Arizona Diamondbacks at New York Mets,2025-04-29,19:10:00,Citi Field,Sports - Baseball
+NBA: Detroit Pistons at New York Knicks,2025-04-29,19:30:00,Madison Square Garden,Sports - Basketball
+NYC Permit: TD Five Boro Bike Tour - Packet Pick Up Production Parking,2025-04-30,08:00:00,EAST   38 STREET between 5 AVENUE and MADISON AVENUE,Mega-Event - Permitted Event
+MLB: Arizona Diamondbacks at New York Mets,2025-04-30,19:10:00,Citi Field,Sports - Baseball
+Concert: Finn Keane,2025-04-30,19:30:00,Barclays Center,Concert - Live Music
+Concert: Charli xcx,2025-04-30,19:30:00,Barclays Center,Concert - Live Music
+MLB: Arizona Diamondbacks at New York Mets,2025-05-01,13:10:00,Citi Field,Sports - Baseball
+Concert: Charli xcx,2025-05-01,19:30:00,Barclays Center,Concert - Live Music
+Concert: Finn Keane,2025-05-01,19:30:00,Barclays Center,Concert - Live Music
+NYC Permit: TD Five Boro Bike Tour - Bike Rental Pick Up,2025-05-02,10:00:00,BROAD STREET between WATER STREET and SOUTH STREET,Mega-Event - Permitted Event
+MLB: Tampa Bay Rays at New York Yankees,2025-05-02,19:05:00,Yankee Stadium,Sports - Baseball
+NYC Permit: TD Five Boro Bike Tour - South Beach,2025-05-03,04:00:00,Franklin D Roosevelt Boardwalk and Beach: Parking Lot 4 Father Capodanno Park and Ride,Mega-Event - Permitted Event
+MLB: Tampa Bay Rays at New York Yankees,2025-05-03,13:05:00,Yankee Stadium,Sports - Baseball
+Concert: Finn Keane,2025-05-03,19:30:00,Barclays Center,Concert - Live Music
+Concert: Charli xcx,2025-05-03,19:30:00,Barclays Center,Concert - Live Music
+NYC Permit: TD Five Boro Bike Tour - Graham Triangle,2025-05-04,08:00:00,Graham Triangle: Graham Triangle,Mega-Event - Permitted Event
+NYC Permit: TD Five Boro Bike Tour 2025 - Ravenswood Playground,2025-05-04,08:30:00,Ravenswood Playground: Ravenswood Playground,Mega-Event - Permitted Event
+NYC Permit: TD Five Boro Bike Tour - Queensbridge Park,2025-05-04,09:00:00,Queensbridge Park: Queensbridge Park,Mega-Event - Permitted Event
+NYC Permit: TD Five Boro Bike Tour 2025 - Gordon Triangle,2025-05-04,09:15:00,Gordon Triangle: Gordon Triangle,Mega-Event - Permitted Event
+NYC Permit: TD Five Boro Bike Tour - Murray Playground,2025-05-04,09:18:00,Murray Playground: Murray Playground,Mega-Event - Permitted Event
+MLB: Tampa Bay Rays at New York Yankees,2025-05-04,13:35:00,Yankee Stadium,Sports - Baseball
+Concert: Charli xcx,2025-05-04,19:30:00,Barclays Center,Concert - Live Music
+Concert: Finn Keane,2025-05-04,19:30:00,Barclays Center,Concert - Live Music
+MLB: San Diego Padres at New York Yankees,2025-05-05,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: San Diego Padres at New York Yankees,2025-05-06,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: San Diego Padres at New York Yankees,2025-05-07,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Mustard,2025-05-08,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Kendrick Lamar & SZA,2025-05-08,19:30:00,MetLife Stadium,Concert - Live Music
+WNBA: Connecticut Sun at New York Liberty,2025-05-09,19:00:00,Barclays Center,Sports - Basketball
+MLB: Chicago Cubs at New York Mets,2025-05-09,19:10:00,Citi Field,Sports - Baseball
+Concert: Mustard,2025-05-09,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Kendrick Lamar & SZA,2025-05-09,19:30:00,MetLife Stadium,Concert - Live Music
+NBA: Boston Celtics at New York Knicks,2025-05-10,15:30:00,Madison Square Garden,Sports - Basketball
+MLB: Chicago Cubs at New York Mets,2025-05-10,19:15:00,Citi Field,Sports - Baseball
+MLB: Chicago Cubs at New York Mets,2025-05-11,12:05:00,Citi Field,Sports - Baseball
+MLB: Pittsburgh Pirates at New York Mets,2025-05-12,19:10:00,Citi Field,Sports - Baseball
+NBA: Boston Celtics at New York Knicks,2025-05-12,19:30:00,Madison Square Garden,Sports - Basketball
+Concert: LAUNDRY DAY,2025-05-12,19:30:00,Madison Square Garden,Concert - Live Music
+WNBA: Toyota Antelopes at New York Liberty,2025-05-12,22:00:00,Barclays Center,Sports - Basketball
+MLB: Pittsburgh Pirates at New York Mets,2025-05-13,19:10:00,Citi Field,Sports - Baseball
+MLB: Pittsburgh Pirates at New York Mets,2025-05-14,19:10:00,Citi Field,Sports - Baseball
+Concert: Shakira,2025-05-15,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: New York Mets at New York Yankees,2025-05-16,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Pitbull,2025-05-16,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Shakira,2025-05-16,19:30:00,MetLife Stadium,Concert - Live Music
+NBA: Boston Celtics at New York Knicks,2025-05-16,20:00:00,Madison Square Garden,Sports - Basketball
+WNBA: Las Vegas Aces at New York Liberty,2025-05-17,13:00:00,Barclays Center,Sports - Basketball
+MLB: New York Mets at New York Yankees,2025-05-17,13:05:00,Yankee Stadium,Sports - Baseball
+MLB: New York Mets at New York Yankees,2025-05-18,19:10:00,Yankee Stadium,Sports - Baseball
+Concert: Rauw Alejandro,2025-05-19,19:30:00,Barclays Center,Concert - Live Music
+MLB: Texas Rangers at New York Yankees,2025-05-20,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Sleeping With Sirens,2025-05-20,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Daisy Grenade,2025-05-20,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Pierce the Veil,2025-05-20,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Rauw Alejandro,2025-05-20,19:30:00,Barclays Center,Concert - Live Music
+MLB: Texas Rangers at New York Yankees,2025-05-21,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Mary J. Blige,2025-05-21,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Rauw Alejandro,2025-05-21,19:30:00,Barclays Center,Concert - Live Music
+NBA: Indiana Pacers at New York Knicks,2025-05-21,20:00:00,Madison Square Garden,Sports - Basketball
+MLB: Texas Rangers at New York Yankees,2025-05-22,12:35:00,Yankee Stadium,Sports - Baseball
+Concert: Beyoncé,2025-05-22,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: Los Angeles Dodgers at New York Mets,2025-05-23,19:10:00,Citi Field,Sports - Baseball
+NBA: Indiana Pacers at New York Knicks,2025-05-23,20:00:00,Madison Square Garden,Sports - Basketball
+MLB: Los Angeles Dodgers at New York Mets,2025-05-24,19:15:00,Citi Field,Sports - Baseball
+Concert: Los Tigres del Norte,2025-05-24,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Patti LaBelle,2025-05-24,19:30:00,Barclays Center,Concert - Live Music
+Concert: Stephanie Mills,2025-05-24,19:30:00,Barclays Center,Concert - Live Music
+Concert: Gladys Knight,2025-05-24,19:30:00,Barclays Center,Concert - Live Music
+Concert: Chaka Khan,2025-05-24,19:30:00,Barclays Center,Concert - Live Music
+Concert: Beyoncé,2025-05-24,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: Los Angeles Dodgers at New York Mets,2025-05-25,19:10:00,Citi Field,Sports - Baseball
+Concert: Beyoncé,2025-05-25,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: Chicago White Sox at New York Mets,2025-05-26,16:10:00,Citi Field,Sports - Baseball
+WNBA: Golden State Valkyries at New York Liberty,2025-05-27,19:00:00,Barclays Center,Sports - Basketball
+MLB: Chicago White Sox at New York Mets,2025-05-27,19:10:00,Citi Field,Sports - Baseball
+MLB: Chicago White Sox at New York Mets,2025-05-28,13:10:00,Citi Field,Sports - Baseball
+Concert: Beyoncé,2025-05-28,19:30:00,MetLife Stadium,Concert - Live Music
+WNBA: Golden State Valkyries at New York Liberty,2025-05-29,19:00:00,Barclays Center,Sports - Basketball
+Concert: Naughty by Nature,2025-05-29,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Beyoncé,2025-05-29,19:30:00,MetLife Stadium,Concert - Live Music
+NBA: Indiana Pacers at New York Knicks,2025-05-29,20:00:00,Madison Square Garden,Sports - Basketball
+MLB: Colorado Rockies at New York Mets,2025-05-30,19:10:00,Citi Field,Sports - Baseball
+Concert: We the Kings,2025-05-30,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Simple Plan,2025-05-30,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Avril Lavigne,2025-05-30,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Colorado Rockies at New York Mets,2025-05-31,16:10:00,Citi Field,Sports - Baseball
+MLB: Colorado Rockies at New York Mets,2025-06-01,13:40:00,Citi Field,Sports - Baseball
+WNBA: Connecticut Sun at New York Liberty,2025-06-01,15:00:00,Barclays Center,Sports - Basketball
+MLB: Cleveland Guardians at New York Yankees,2025-06-03,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Cleveland Guardians at New York Yankees,2025-06-04,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Jelly Roll,2025-06-04,19:30:00,Citi Field,Concert - Live Music
+Concert: Post Malone,2025-06-04,19:30:00,Citi Field,Concert - Live Music
+Concert: Chandler Paul Walters,2025-06-04,19:30:00,Citi Field,Concert - Live Music
+Concert: Wyatt Flores,2025-06-04,19:30:00,Citi Field,Concert - Live Music
+MLB: Cleveland Guardians at New York Yankees,2025-06-05,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: The Weeknd,2025-06-05,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Mike Dean,2025-06-05,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Playboi Carti,2025-06-05,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: Boston Red Sox at New York Yankees,2025-06-06,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Lil Wayne,2025-06-06,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Playboi Carti,2025-06-06,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Mike Dean,2025-06-06,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: The Weeknd,2025-06-06,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: The Weeknd,2025-06-07,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Playboi Carti,2025-06-07,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Mike Dean,2025-06-07,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: Boston Red Sox at New York Yankees,2025-06-07,19:35:00,Yankee Stadium,Sports - Baseball
+NYC Permit: National Puerto Rican Day Parade,2025-06-08,06:00:00,EAST   44 STREET between MADISON AVENUE and 5 AVENUE,Mega-Event - Street Closure
+NYC Permit: Knickerbocker Avenue Puerto Rican Day Parade,2025-06-08,11:00:00,KNICKERBOCKER AVENUE between MENAHAN STREET and GATES AVENUE,Mega-Event - Street Closure
+NYC Permit: National Puerto Rican Day Parade,2025-06-08,11:00:00,Central Park: Central Park West Sidewalks - 65th St to 72nd St,Mega-Event - Permitted Event
+MLB: Boston Red Sox at New York Yankees,2025-06-08,19:10:00,Yankee Stadium,Sports - Baseball
+MLB: Washington Nationals at New York Mets,2025-06-10,19:10:00,Citi Field,Sports - Baseball
+WNBA: Chicago Sky at New York Liberty,2025-06-10,20:00:00,Barclays Center,Sports - Basketball
+MLB: Washington Nationals at New York Mets,2025-06-11,19:10:00,Citi Field,Sports - Baseball
+MLB: Washington Nationals at New York Mets,2025-06-12,13:10:00,Citi Field,Sports - Baseball
+Concert: Margo Price,2025-06-12,19:30:00,Citi Field,Concert - Live Music
+MLB: Tampa Bay Rays at New York Mets,2025-06-13,19:10:00,Citi Field,Sports - Baseball
+NYC Permit: Bronx Puerto Rican Day Parade,2025-06-14,11:00:00,GRAND CONCOURSE between EAST  165 STREET and EAST  167 STREET,Mega-Event - Street Closure
+MLB: Tampa Bay Rays at New York Mets,2025-06-14,16:10:00,Citi Field,Sports - Baseball
+Concert: Alejandro Fernández,2025-06-14,19:30:00,Barclays Center,Concert - Live Music
+MLB: Tampa Bay Rays at New York Mets,2025-06-15,13:40:00,Citi Field,Sports - Baseball
+MLB: Los Angeles Angels at New York Yankees,2025-06-16,19:05:00,Yankee Stadium,Sports - Baseball
+WNBA: Atlanta Dream at New York Liberty,2025-06-17,19:00:00,Barclays Center,Sports - Basketball
+MLB: Los Angeles Angels at New York Yankees,2025-06-17,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Los Angeles Angels at New York Yankees,2025-06-18,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Lil Baby,2025-06-18,19:30:00,Barclays Center,Concert - Live Music
+Concert: NLE Choppa,2025-06-18,19:30:00,Barclays Center,Concert - Live Music
+Concert: BigXthaPlug,2025-06-18,19:30:00,Barclays Center,Concert - Live Music
+Concert: Stray Kids,2025-06-18,19:30:00,Citi Field,Concert - Live Music
+MLB: Los Angeles Angels at New York Yankees,2025-06-19,13:05:00,Yankee Stadium,Sports - Baseball
+WNBA: Phoenix Mercury at New York Liberty,2025-06-19,19:00:00,Barclays Center,Sports - Basketball
+Concert: Stray Kids,2025-06-19,19:30:00,Citi Field,Concert - Live Music
+MLB: Baltimore Orioles at New York Yankees,2025-06-20,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Baltimore Orioles at New York Yankees,2025-06-21,13:05:00,Yankee Stadium,Sports - Baseball
+MLB: Baltimore Orioles at New York Yankees,2025-06-22,11:35:00,Yankee Stadium,Sports - Baseball
+MLB: Atlanta Braves at New York Mets,2025-06-23,19:10:00,Citi Field,Sports - Baseball
+MLB: Atlanta Braves at New York Mets,2025-06-24,19:10:00,Citi Field,Sports - Baseball
+MLB: Atlanta Braves at New York Mets,2025-06-25,19:10:00,Citi Field,Sports - Baseball
+MLB: Atlanta Braves at New York Mets,2025-06-26,19:10:00,Citi Field,Sports - Baseball
+MLB: Athletics at New York Yankees,2025-06-27,19:05:00,Yankee Stadium,Sports - Baseball
+NYC Permit: 2025 NYC Pride March Grandstand,2025-06-28,07:00:00,Worth Square: Worth Square,Mega-Event - Permitted Event
+MLB: Athletics at New York Yankees,2025-06-28,13:05:00,Yankee Stadium,Sports - Baseball
+Concert: Goose,2025-06-28,19:30:00,Madison Square Garden,Concert - Live Music
+NYC Permit: 2025 NYC Pride March,2025-06-29,11:00:00,WEST   33 STREET between BROADWAY and 5 AVENUE,Mega-Event - Street Closure
+NYC Permit: 2025 NYC Pride March ADA,2025-06-29,11:00:00,St. Vincent's Triangle: St. Vincent's Triangle,Mega-Event - Permitted Event
+MLB: Athletics at New York Yankees,2025-06-29,13:35:00,Yankee Stadium,Sports - Baseball
+MLB: Milwaukee Brewers at New York Mets,2025-07-01,19:10:00,Citi Field,Sports - Baseball
+MLB: Milwaukee Brewers at New York Mets,2025-07-02,13:10:00,Citi Field,Sports - Baseball
+MLB: Milwaukee Brewers at New York Mets,2025-07-02,19:10:00,Citi Field,Sports - Baseball
+WNBA: Los Angeles Sparks at New York Liberty,2025-07-03,19:00:00,Barclays Center,Sports - Basketball
+MLB: Milwaukee Brewers at New York Mets,2025-07-03,19:10:00,Citi Field,Sports - Baseball
+MLB: New York Yankees at New York Mets,2025-07-04,15:10:00,Citi Field,Sports - Baseball
+MLB: New York Yankees at New York Mets,2025-07-05,16:10:00,Citi Field,Sports - Baseball
+WNBA: Seattle Storm at New York Liberty,2025-07-06,13:00:00,Barclays Center,Sports - Basketball
+MLB: New York Yankees at New York Mets,2025-07-06,13:40:00,Citi Field,Sports - Baseball
+MLB: Seattle Mariners at New York Yankees,2025-07-08,19:05:00,Yankee Stadium,Sports - Baseball
+WNBA: Las Vegas Aces at New York Liberty,2025-07-08,20:00:00,Barclays Center,Sports - Basketball
+MLB: Seattle Mariners at New York Yankees,2025-07-09,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Seattle Mariners at New York Yankees,2025-07-10,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Chicago Cubs at New York Yankees,2025-07-11,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Young the Giant,2025-07-11,19:30:00,Citi Field,Concert - Live Music
+Concert: The Lumineers,2025-07-11,19:30:00,Citi Field,Concert - Live Music
+Concert: Hippo Campus,2025-07-11,19:30:00,Citi Field,Concert - Live Music
+MLB: Chicago Cubs at New York Yankees,2025-07-12,13:05:00,Yankee Stadium,Sports - Baseball
+Concert: Puddles Pity Party,2025-07-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: “Weird Al” Yankovic,2025-07-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Amerie,2025-07-12,19:30:00,Barclays Center,Concert - Live Music
+Concert: Tink,2025-07-12,19:30:00,Barclays Center,Concert - Live Music
+Concert: Keyshia Cole,2025-07-12,19:30:00,Barclays Center,Concert - Live Music
+MLB: Chicago Cubs at New York Yankees,2025-07-13,13:35:00,Yankee Stadium,Sports - Baseball
+WNBA: Atlanta Dream at New York Liberty,2025-07-13,15:00:00,Barclays Center,Sports - Basketball
+Concert: Tems,2025-07-13,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: J Balvin,2025-07-13,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Coldplay,2025-07-13,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Doja Cat,2025-07-13,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Robbie Williams,2025-07-13,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: ATEEZ,2025-07-13,19:30:00,Citi Field,Concert - Live Music
+Concert: Lil Yachty,2025-07-14,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Paris Texas,2025-07-14,19:30:00,Madison Square Garden,Concert - Live Music
+"Concert: Tyler, The Creator",2025-07-14,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Lil Yachty,2025-07-15,19:30:00,Madison Square Garden,Concert - Live Music
+"Concert: Tyler, The Creator",2025-07-15,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Paris Texas,2025-07-15,19:30:00,Madison Square Garden,Concert - Live Music
+WNBA: Indiana Fever at New York Liberty,2025-07-16,19:30:00,Barclays Center,Sports - Basketball
+Concert: Run the Jewels,2025-07-16,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Wu‐Tang Clan,2025-07-16,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Paris Texas,2025-07-17,19:30:00,Barclays Center,Concert - Live Music
+"Concert: Tyler, The Creator",2025-07-17,19:30:00,Barclays Center,Concert - Live Music
+Concert: Lil Yachty,2025-07-17,19:30:00,Barclays Center,Concert - Live Music
+MLB: Cincinnati Reds at New York Mets,2025-07-18,19:10:00,Citi Field,Sports - Baseball
+Concert: Lil Yachty,2025-07-18,19:30:00,Barclays Center,Concert - Live Music
+"Concert: Tyler, The Creator",2025-07-18,19:30:00,Barclays Center,Concert - Live Music
+Concert: Paris Texas,2025-07-18,19:30:00,Barclays Center,Concert - Live Music
+Concert: The Front Bottoms,2025-07-18,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Kings of Leon,2025-07-18,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Zach Bryan,2025-07-18,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: Cincinnati Reds at New York Mets,2025-07-19,16:10:00,Citi Field,Sports - Baseball
+Concert: Matt Rife,2025-07-19,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: The Front Bottoms,2025-07-19,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Kings of Leon,2025-07-19,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Zach Bryan,2025-07-19,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: Cincinnati Reds at New York Mets,2025-07-20,13:40:00,Citi Field,Sports - Baseball
+Concert: Bush,2025-07-20,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Morgan Wade,2025-07-20,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Shinedown,2025-07-20,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: The Front Bottoms,2025-07-20,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Zach Bryan,2025-07-20,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Kings of Leon,2025-07-20,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: Los Angeles Angels at New York Mets,2025-07-21,19:10:00,Citi Field,Sports - Baseball
+MLB: Los Angeles Angels at New York Mets,2025-07-22,19:10:00,Citi Field,Sports - Baseball
+Concert: Ghost,2025-07-22,19:30:00,Madison Square Garden,Concert - Live Music
+WNBA: Indiana Fever at New York Liberty,2025-07-22,20:00:00,Barclays Center,Sports - Basketball
+MLB: Los Angeles Angels at New York Mets,2025-07-23,13:10:00,Citi Field,Sports - Baseball
+Concert: Kesha,2025-07-23,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Scissor Sisters,2025-07-23,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Vengaboys,2025-07-23,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: keshi,2025-07-24,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: starfall,2025-07-24,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Mac Ayres,2025-07-24,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Philadelphia Phillies at New York Yankees,2025-07-25,19:05:00,Yankee Stadium,Sports - Baseball
+WNBA: Phoenix Mercury at New York Liberty,2025-07-25,19:30:00,Barclays Center,Sports - Basketball
+Concert: Grace Potter,2025-07-25,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Chris Stapleton,2025-07-25,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Philadelphia Phillies at New York Yankees,2025-07-26,13:05:00,Yankee Stadium,Sports - Baseball
+WNBA: Los Angeles Sparks at New York Liberty,2025-07-26,19:00:00,Barclays Center,Sports - Basketball
+Concert: Grace Potter,2025-07-26,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Chris Stapleton,2025-07-26,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: BLACKPINK,2025-07-26,19:30:00,Citi Field,Concert - Live Music
+MLB: Philadelphia Phillies at New York Yankees,2025-07-27,13:35:00,Yankee Stadium,Sports - Baseball
+Concert: BLACKPINK,2025-07-27,19:30:00,Citi Field,Concert - Live Music
+MLB: Tampa Bay Rays at New York Yankees,2025-07-28,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Gracie Abrams,2025-07-28,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: ROLE MODEL,2025-07-28,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Tampa Bay Rays at New York Yankees,2025-07-29,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Gracie Abrams,2025-07-29,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: ROLE MODEL,2025-07-29,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: PVRIS,2025-07-29,19:30:00,Barclays Center,Concert - Live Music
+Concert: Linkin Park,2025-07-29,19:30:00,Barclays Center,Concert - Live Music
+MLB: Tampa Bay Rays at New York Yankees,2025-07-30,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Lord Huron,2025-07-30,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Waxahatchee,2025-07-30,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Tampa Bay Rays at New York Yankees,2025-07-31,13:05:00,Yankee Stadium,Sports - Baseball
+MLB: San Francisco Giants at New York Mets,2025-08-01,19:10:00,Citi Field,Sports - Baseball
+MLB: San Francisco Giants at New York Mets,2025-08-02,16:10:00,Citi Field,Sports - Baseball
+MLB: San Francisco Giants at New York Mets,2025-08-03,13:40:00,Citi Field,Sports - Baseball
+MLB: Cleveland Guardians at New York Mets,2025-08-04,19:10:00,Citi Field,Sports - Baseball
+WNBA: Dallas Wings at New York Liberty,2025-08-05,19:00:00,Barclays Center,Sports - Basketball
+MLB: Cleveland Guardians at New York Mets,2025-08-05,19:10:00,Citi Field,Sports - Baseball
+MLB: Cleveland Guardians at New York Mets,2025-08-06,13:10:00,Citi Field,Sports - Baseball
+MLB: Houston Astros at New York Yankees,2025-08-08,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Houston Astros at New York Yankees,2025-08-09,14:05:00,Yankee Stadium,Sports - Baseball
+Concert: Death Cab for Cutie,2025-08-09,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: My Chemical Romance,2025-08-09,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Thursday,2025-08-09,19:30:00,MetLife Stadium,Concert - Live Music
+WNBA: Minnesota Lynx at New York Liberty,2025-08-10,12:30:00,Barclays Center,Sports - Basketball
+MLB: Houston Astros at New York Yankees,2025-08-10,13:35:00,Yankee Stadium,Sports - Baseball
+Concert: The All‐American Rejects,2025-08-10,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Jonas Brothers,2025-08-10,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Marshmello,2025-08-10,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Jonas Brothers with Marshmello,2025-08-10,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: Minnesota Twins at New York Yankees,2025-08-11,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Rebecca Black,2025-08-11,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Katy Perry,2025-08-11,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Minnesota Twins at New York Yankees,2025-08-12,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Atlanta Braves at New York Mets,2025-08-12,19:10:00,Citi Field,Sports - Baseball
+Concert: Chris Brown,2025-08-12,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Summer Walker,2025-08-12,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: Minnesota Twins at New York Yankees,2025-08-13,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Atlanta Braves at New York Mets,2025-08-13,19:10:00,Citi Field,Sports - Baseball
+Concert: Chris Brown,2025-08-13,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Summer Walker,2025-08-13,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: Atlanta Braves at New York Mets,2025-08-14,19:10:00,Citi Field,Sports - Baseball
+MLB: Seattle Mariners at New York Mets,2025-08-15,19:10:00,Citi Field,Sports - Baseball
+Concert: William Montgomery,2025-08-15,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Hans Kim,2025-08-15,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Tony Hinchcliffe,2025-08-15,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: David Lucas,2025-08-15,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Kam Patterson,2025-08-15,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: 1964: The Tribute,2025-08-15,19:30:00,Citi Field,Concert - Live Music
+MLB: Seattle Mariners at New York Mets,2025-08-16,16:10:00,Citi Field,Sports - Baseball
+NFL: New York Jets at New York Giants,2025-08-16,19:00:00,MetLife Stadium,Sports - Football
+Concert: Kill Tony,2025-08-16,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: The Kill Tony Band,2025-08-16,19:30:00,Madison Square Garden,Concert - Live Music
+WNBA: Minnesota Lynx at New York Liberty,2025-08-19,19:00:00,Barclays Center,Sports - Basketball
+Concert: Billy Idol,2025-08-20,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Joan Jett & The Blackhearts,2025-08-20,19:30:00,Madison Square Garden,Concert - Live Music
+WNBA: Chicago Sky at New York Liberty,2025-08-21,19:00:00,Barclays Center,Sports - Basketball
+MLB: Boston Red Sox at New York Yankees,2025-08-21,19:15:00,Yankee Stadium,Sports - Baseball
+NFL: New England Patriots at New York Giants,2025-08-21,20:00:00,MetLife Stadium,Sports - Football
+MLB: Boston Red Sox at New York Yankees,2025-08-22,19:05:00,Yankee Stadium,Sports - Baseball
+NFL: Philadelphia Eagles at New York Jets,2025-08-22,19:30:00,MetLife Stadium,Sports - Football
+Concert: Lady Gaga,2025-08-22,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Boston Red Sox at New York Yankees,2025-08-23,13:05:00,Yankee Stadium,Sports - Baseball
+Concert: Lady Gaga,2025-08-23,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Boston Red Sox at New York Yankees,2025-08-24,19:10:00,Yankee Stadium,Sports - Baseball
+WNBA: Connecticut Sun at New York Liberty,2025-08-25,19:00:00,Barclays Center,Sports - Basketball
+MLB: Washington Nationals at New York Yankees,2025-08-25,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Philadelphia Phillies at New York Mets,2025-08-25,19:10:00,Citi Field,Sports - Baseball
+MLB: Washington Nationals at New York Yankees,2025-08-26,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Philadelphia Phillies at New York Mets,2025-08-26,19:10:00,Citi Field,Sports - Baseball
+Concert: Lady Gaga,2025-08-26,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Washington Nationals at New York Yankees,2025-08-27,13:05:00,Yankee Stadium,Sports - Baseball
+MLB: Philadelphia Phillies at New York Mets,2025-08-27,19:10:00,Citi Field,Sports - Baseball
+Concert: Lady Gaga,2025-08-27,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Wisp,2025-08-27,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Korn,2025-08-27,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: System of a Down,2025-08-27,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Polyphia,2025-08-27,19:30:00,MetLife Stadium,Concert - Live Music
+WNBA: Washington Mystics at New York Liberty,2025-08-28,19:00:00,Barclays Center,Sports - Basketball
+MLB: Miami Marlins at New York Mets,2025-08-28,19:10:00,Citi Field,Sports - Baseball
+Concert: Zach Top,2025-08-28,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: The Band Loula,2025-08-28,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Dierks Bentley,2025-08-28,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Wisp,2025-08-28,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Polyphia,2025-08-28,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: System of a Down,2025-08-28,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Korn,2025-08-28,19:30:00,MetLife Stadium,Concert - Live Music
+MLB: Miami Marlins at New York Mets,2025-08-29,19:10:00,Citi Field,Sports - Baseball
+MLB: Miami Marlins at New York Mets,2025-08-30,16:10:00,Citi Field,Sports - Baseball
+Concert: The Who,2025-08-30,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Feist,2025-08-30,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Miami Marlins at New York Mets,2025-08-31,13:40:00,Citi Field,Sports - Baseball
+Concert: Oasis,2025-08-31,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Cast,2025-08-31,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Cage the Elephant,2025-08-31,19:30:00,MetLife Stadium,Concert - Live Music
+NYC Permit: West Indian American Labor Day Parade,2025-09-01,07:30:00,EASTERN PARKWAY between WASHINGTON AVENUE and UNDERHILL AVENUE,Mega-Event - Street Closure
+NYC Permit: West Indian American Labor Day Parade,2025-09-01,11:00:00,EASTERN PARKWAY between BUFFALO AVENUE and UTICA AVENUE,Mega-Event - Street Closure
+NYC Permit: West Indian American Labor Day Parade,2025-09-01,11:00:00,EASTERN PARKWAY between UTICA AVENUE and UNDERHILL AVENUE,Mega-Event - Street Closure
+Concert: Cast,2025-09-01,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Cage the Elephant,2025-09-01,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Oasis,2025-09-01,19:30:00,MetLife Stadium,Concert - Live Music
+Concert: Boys Noize,2025-09-02,19:30:00,Barclays Center,Concert - Live Music
+Concert: Nine Inch Nails,2025-09-02,19:30:00,Barclays Center,Concert - Live Music
+Concert: Tate McRae,2025-09-03,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Zara Larsson,2025-09-03,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Boys Noize,2025-09-03,19:30:00,Barclays Center,Concert - Live Music
+Concert: Nine Inch Nails,2025-09-03,19:30:00,Barclays Center,Concert - Live Music
+Concert: Tate McRae,2025-09-04,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Zara Larsson,2025-09-04,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Toronto Blue Jays at New York Yankees,2025-09-05,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Elliot James Reay,2025-09-05,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Benson Boone,2025-09-05,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Eladio Carrión,2025-09-05,19:30:00,Barclays Center,Concert - Live Music
+MLB: Toronto Blue Jays at New York Yankees,2025-09-06,13:05:00,Yankee Stadium,Sports - Baseball
+Concert: Lady Gaga,2025-09-06,19:30:00,Madison Square Garden,Concert - Live Music
+NFL: Pittsburgh Steelers at New York Jets,2025-09-07,13:00:00,MetLife Stadium,Sports - Football
+MLB: Toronto Blue Jays at New York Yankees,2025-09-07,13:35:00,Yankee Stadium,Sports - Baseball
+Concert: Lady Gaga,2025-09-07,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Dora Jar,2025-09-08,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: HAIM,2025-09-08,19:30:00,Madison Square Garden,Concert - Live Music
+WNBA: Washington Mystics at New York Liberty,2025-09-09,19:00:00,Barclays Center,Sports - Basketball
+MLB: Detroit Tigers at New York Yankees,2025-09-09,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Detroit Tigers at New York Yankees,2025-09-10,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Detroit Tigers at New York Yankees,2025-09-11,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Kali Uchis,2025-09-11,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Texas Rangers at New York Mets,2025-09-12,19:10:00,Citi Field,Sports - Baseball
+Concert: Kali Uchis,2025-09-12,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Texas Rangers at New York Mets,2025-09-13,16:10:00,Citi Field,Sports - Baseball
+Concert: Vulfpeck,2025-09-13,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Miguel Cervantes,2025-09-13,19:30:00,Yankee Stadium,Concert - Live Music
+Concert: Sam Tinnesz,2025-09-13,19:30:00,Yankee Stadium,Concert - Live Music
+Concert: Big Time Rush,2025-09-13,19:30:00,Yankee Stadium,Concert - Live Music
+NFL: Buffalo Bills at New York Jets,2025-09-14,13:00:00,MetLife Stadium,Sports - Football
+MLB: Texas Rangers at New York Mets,2025-09-14,13:40:00,Citi Field,Sports - Baseball
+Concert: Adam Sandler,2025-09-15,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Sarah Squirm Sherman,2025-09-15,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Rob Schneider,2025-09-15,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: San Diego Padres at New York Mets,2025-09-16,19:10:00,Citi Field,Sports - Baseball
+MLB: San Diego Padres at New York Mets,2025-09-17,19:10:00,Citi Field,Sports - Baseball
+Concert: Dua Lipa,2025-09-17,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Cil,2025-09-17,19:30:00,Madison Square Garden,Concert - Live Music
+WNBA: Phoenix Mercury at New York Liberty,2025-09-17,20:00:00,Barclays Center,Sports - Basketball
+MLB: San Diego Padres at New York Mets,2025-09-18,13:10:00,Citi Field,Sports - Baseball
+Concert: Cil,2025-09-18,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Dua Lipa,2025-09-18,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Washington Nationals at New York Mets,2025-09-19,19:10:00,Citi Field,Sports - Baseball
+Concert: Eric Clapton,2025-09-19,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: The Wallflowers,2025-09-19,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Washington Nationals at New York Mets,2025-09-20,16:10:00,Citi Field,Sports - Baseball
+Concert: Dua Lipa,2025-09-20,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Cil,2025-09-20,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Elle King,2025-09-20,19:30:00,Barclays Center,Concert - Live Music
+Concert: Eric Church,2025-09-20,19:30:00,Barclays Center,Concert - Live Music
+NHL: New York Rangers at New Jersey Devils,2025-09-21,13:00:00,Prudential Center,Sports - Hockey
+MLB: Washington Nationals at New York Mets,2025-09-21,13:40:00,Citi Field,Sports - Baseball
+NHL: Philadelphia Flyers at New York Islanders,2025-09-21,19:00:00,UBS Arena,Sports - Hockey
+Concert: Dua Lipa,2025-09-21,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Cil,2025-09-21,19:30:00,Madison Square Garden,Concert - Live Music
+NFL: Kansas City Chiefs at New York Giants,2025-09-21,20:20:00,MetLife Stadium,Sports - Football
+Concert: Sleep Token,2025-09-22,19:30:00,Barclays Center,Concert - Live Music
+Concert: Thornhill,2025-09-22,19:30:00,Barclays Center,Concert - Live Music
+UN General Assembly (High-Level Week),2025-09-23,08:00:00,Midtown Manhattan,Mega-Event - Gridlock Alert
+NHL: Boston Bruins at New York Rangers,2025-09-23,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: New York Islanders at New Jersey Devils,2025-09-23,19:00:00,Prudential Center,Sports - Hockey
+MLB: Chicago White Sox at New York Yankees,2025-09-23,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Chicago White Sox at New York Yankees,2025-09-24,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: HARDY,2025-09-24,19:30:00,Madison Square Garden,Concert - Live Music
+NHL: New York Islanders at New York Rangers,2025-09-25,19:00:00,Madison Square Garden,Sports - Hockey
+MLB: Chicago White Sox at New York Yankees,2025-09-25,19:05:00,Yankee Stadium,Sports - Baseball
+Concert: Bernie Williams,2025-09-25,19:30:00,Yankee Stadium,Concert - Live Music
+NHL: New Jersey Devils at New York Islanders,2025-09-26,19:00:00,UBS Arena,Sports - Hockey
+MLB: Baltimore Orioles at New York Yankees,2025-09-26,19:05:00,Yankee Stadium,Sports - Baseball
+MLB: Baltimore Orioles at New York Yankees,2025-09-27,13:05:00,Yankee Stadium,Sports - Baseball
+Concert: Nate Bargatze,2025-09-27,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: YoungBoy Never Broke Again,2025-09-27,19:30:00,Barclays Center,Concert - Live Music
+NFL: Los Angeles Chargers at New York Giants,2025-09-28,13:00:00,MetLife Stadium,Sports - Football
+NHL: Washington Capitals at New Jersey Devils,2025-09-28,15:00:00,Prudential Center,Sports - Hockey
+MLB: Baltimore Orioles at New York Yankees,2025-09-28,15:05:00,Yankee Stadium,Sports - Baseball
+NHL: New York Rangers at New York Islanders,2025-09-29,19:00:00,UBS Arena,Sports - Hockey
+Concert: Reneé Rapp,2025-09-29,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Syd,2025-09-29,19:30:00,Madison Square Garden,Concert - Live Music
+MLB: Boston Red Sox at New York Yankees,2025-09-30,18:08:00,Yankee Stadium,Sports - Baseball
+MLB: Boston Red Sox at New York Yankees,2025-10-01,18:08:00,Yankee Stadium,Sports - Baseball
+Concert: The Japanese House,2025-10-01,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Chanel Beads,2025-10-01,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Lorde,2025-10-01,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Syd,2025-10-01,19:30:00,Barclays Center,Concert - Live Music
+Concert: Reneé Rapp,2025-10-01,19:30:00,Barclays Center,Concert - Live Music
+NBA: Philadelphia 76ers at New York Knicks,2025-10-02,12:00:00,Madison Square Garden,Sports - Basketball
+NHL: New Jersey Devils at New York Rangers,2025-10-02,19:00:00,Madison Square Garden,Sports - Hockey
+MLB: Boston Red Sox at New York Yankees,2025-10-02,20:08:00,Yankee Stadium,Sports - Baseball
+NBA: Hapoel Jerusalem at Brooklyn Nets,2025-10-04,20:00:00,Barclays Center,Sports - Basketball
+NFL: Dallas Cowboys at New York Jets,2025-10-05,13:00:00,MetLife Stadium,Sports - Football
+NHL: Pittsburgh Penguins at New York Rangers,2025-10-07,20:00:00,Madison Square Garden,Sports - Hockey
+MLB: Toronto Blue Jays at New York Yankees,2025-10-07,20:08:00,Yankee Stadium,Sports - Baseball
+MLB: Toronto Blue Jays at New York Yankees,2025-10-08,19:08:00,Yankee Stadium,Sports - Baseball
+NBA: Minnesota Timberwolves at New York Knicks,2025-10-09,19:30:00,Madison Square Garden,Sports - Basketball
+NFL: Philadelphia Eagles at New York Giants,2025-10-09,20:15:00,MetLife Stadium,Sports - Football
+NBA: Phoenix Suns at Brooklyn Nets,2025-10-10,08:00:00,Barclays Center,Sports - Basketball
+Concert: Lainey Wilson,2025-10-10,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Muscadine Bloodline,2025-10-10,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Lauren Watkins,2025-10-10,19:30:00,Madison Square Garden,Concert - Live Music
+NYC Permit: 43rd Annual Brooklyn Columbus Day Parade,2025-10-11,11:00:00,18 AVENUE between 61 STREET and 65 STREET,Mega-Event - Street Closure
+NYC Permit: 48th Annual Queens Columbus Day Parade,2025-10-11,12:00:00,Columbus Square: Columbus Square - Whole Park,Mega-Event - Permitted Event
+NYC Permit: COLUMBUS DAY PARADE,2025-10-11,12:00:00,34 AVENUE between 36 STREET and 35 STREET,Mega-Event - Street Closure
+NHL: Washington Capitals at New York Islanders,2025-10-11,19:00:00,UBS Arena,Sports - Hockey
+NFL: Denver Broncos at New York Jets,2025-10-12,09:30:00,MetLife Stadium,Sports - Football
+NYC Permit: Bronx Columbus Day Parade,2025-10-12,12:00:00,MORRIS PARK AVENUE between WHITE PLAINS ROAD and WALLACE AVENUE,Mega-Event - Street Closure
+NHL: Washington Capitals at New York Rangers,2025-10-12,19:00:00,Madison Square Garden,Sports - Hockey
+NYC Permit: Columbus Day Parade,2025-10-13,09:00:00,Central Park: Fifth Ave Sidewalks - 65th St to 72nd St,Mega-Event - Permitted Event
+NYC Permit: Columbus Day Parade,2025-10-13,11:15:00,EAST   43 STREET between MADISON AVENUE and 5 AVENUE,Mega-Event - Street Closure
+NHL: Winnipeg Jets at New York Islanders,2025-10-13,13:00:00,UBS Arena,Sports - Hockey
+NBA: Washington Wizards at New York Knicks,2025-10-13,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Edmonton Oilers at New York Rangers,2025-10-14,19:00:00,Madison Square Garden,Sports - Hockey
+Concert: Suki Waterhouse,2025-10-15,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Laufey,2025-10-15,19:30:00,Madison Square Garden,Concert - Live Music
+NHL: Florida Panthers at New Jersey Devils,2025-10-16,19:00:00,Prudential Center,Sports - Hockey
+NHL: Edmonton Oilers at New York Islanders,2025-10-16,19:30:00,UBS Arena,Sports - Hockey
+Concert: Suki Waterhouse,2025-10-16,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Laufey,2025-10-16,19:30:00,Madison Square Garden,Concert - Live Music
+NBA: Charlotte Hornets at New York Knicks,2025-10-17,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Edmonton Oilers at New Jersey Devils,2025-10-18,15:30:00,Prudential Center,Sports - Hockey
+Concert: Alessi Rose,2025-10-18,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Tate McRae,2025-10-18,19:30:00,Madison Square Garden,Concert - Live Music
+NFL: Carolina Panthers at New York Jets,2025-10-19,13:00:00,MetLife Stadium,Sports - Football
+Concert: Omer Adam,2025-10-19,19:30:00,Madison Square Garden,Concert - Live Music
+NHL: Minnesota Wild at New York Rangers,2025-10-20,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: San Jose Sharks at New York Islanders,2025-10-21,19:00:00,UBS Arena,Sports - Hockey
+NBA: Cleveland Cavaliers at New York Knicks,2025-10-22,19:00:00,Madison Square Garden,Sports - Basketball
+NHL: Minnesota Wild at New Jersey Devils,2025-10-22,19:00:00,Prudential Center,Sports - Hockey
+NHL: Detroit Red Wings at New York Islanders,2025-10-23,19:00:00,UBS Arena,Sports - Hockey
+NHL: San Jose Sharks at New York Rangers,2025-10-23,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: San Jose Sharks at New Jersey Devils,2025-10-24,19:00:00,Prudential Center,Sports - Hockey
+NBA: Cleveland Cavaliers at Brooklyn Nets,2025-10-24,19:30:00,Barclays Center,Sports - Basketball
+NBA: Boston Celtics at New York Knicks,2025-10-24,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Colorado Avalanche at New Jersey Devils,2025-10-26,13:00:00,Prudential Center,Sports - Hockey
+Concert: Amber Mark,2025-10-26,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Olivia Dean,2025-10-26,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Sabrina Carpenter,2025-10-26,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Fcukers,2025-10-27,19:30:00,Barclays Center,Concert - Live Music
+Concert: Tame Impala,2025-10-27,19:30:00,Barclays Center,Concert - Live Music
+Concert: Sabrina Carpenter,2025-10-28,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Amber Mark,2025-10-28,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Olivia Dean,2025-10-28,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Fcukers,2025-10-28,19:30:00,Barclays Center,Concert - Live Music
+Concert: Tame Impala,2025-10-28,19:30:00,Barclays Center,Concert - Live Music
+NBA: Atlanta Hawks at Brooklyn Nets,2025-10-29,19:30:00,Barclays Center,Sports - Basketball
+Concert: Olivia Dean,2025-10-29,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Amber Mark,2025-10-29,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Sabrina Carpenter,2025-10-29,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Bryan Adams,2025-10-30,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Pat Benatar & Neil Giraldo,2025-10-30,19:30:00,Madison Square Garden,Concert - Live Music
+NYC Permit: The 52nd Annual New Yorks Village Halloween Parade,2025-10-31,06:00:00,SULLIVAN STREET between SPRING STREET and BROOME STREET,Mega-Event - Street Closure
+Concert: Amber Mark,2025-10-31,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Olivia Dean,2025-10-31,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Sabrina Carpenter,2025-10-31,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Fcukers,2025-10-31,19:30:00,Barclays Center,Concert - Live Music
+Concert: Tame Impala,2025-10-31,19:30:00,Barclays Center,Concert - Live Music
+Concert: Olivia Dean,2025-11-01,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Amber Mark,2025-11-01,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Sabrina Carpenter,2025-11-01,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Fcukers,2025-11-01,19:30:00,Barclays Center,Concert - Live Music
+Concert: Tame Impala,2025-11-01,19:30:00,Barclays Center,Concert - Live Music
+NYC Permit: 2025 TCS New York City Marathon - DRONES - START,2025-11-02,05:00:00,John Paul Jones Park (Cannonball Park): John Paul Jones Park,Mega-Event - Permitted Event
+NYC Permit: 2025 TCS New York City Marathon - Queens - Gordon Triangle,2025-11-02,08:00:00,Gordon Triangle: Gordon Triangle,Mega-Event - Permitted Event
+NYC Permit: 2025 TCS New York City Marathon - Manhattan - Thomas Jefferson Park,2025-11-02,08:00:00,Thomas Jefferson Park: Thomas Jefferson Park,Mega-Event - Permitted Event
+NYC Permit: 2025 TCS New York City Marathon - Bronx - Graham Triangle,2025-11-02,08:00:00,Graham Triangle: Graham Triangle,Mega-Event - Permitted Event
+NYC Permit: 2025 TCS New York City Marathon - Manhattan - Marcus Garvey,2025-11-02,11:00:00,Marcus Garvey Park: Marcus Garvey Park,Mega-Event - Permitted Event
+NFL: San Francisco 49ers at New York Giants,2025-11-02,13:00:00,MetLife Stadium,Sports - Football
+NHL: Columbus Blue Jackets at New York Islanders,2025-11-02,17:00:00,UBS Arena,Sports - Hockey
+NBA: Philadelphia 76ers at Brooklyn Nets,2025-11-02,18:00:00,Barclays Center,Sports - Basketball
+NBA: Chicago Bulls at New York Knicks,2025-11-02,19:00:00,Madison Square Garden,Sports - Basketball
+NBA: Minnesota Timberwolves at Brooklyn Nets,2025-11-03,19:00:00,Barclays Center,Sports - Basketball
+NBA: Washington Wizards at New York Knicks,2025-11-03,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Boston Bruins at New York Islanders,2025-11-04,19:00:00,UBS Arena,Sports - Hockey
+NHL: Carolina Hurricanes at New York Rangers,2025-11-04,19:00:00,Madison Square Garden,Sports - Hockey
+Concert: John Legend,2025-11-04,19:30:00,Barclays Center,Concert - Live Music
+NBA: Minnesota Timberwolves at New York Knicks,2025-11-05,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Montreal Canadiens at New Jersey Devils,2025-11-06,19:00:00,Prudential Center,Sports - Hockey
+Concert: GIVĒON,2025-11-06,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Charlotte Day Wilson,2025-11-06,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Homixide Gang,2025-11-06,19:30:00,Barclays Center,Concert - Live Music
+Concert: Ken Carson,2025-11-06,19:30:00,Barclays Center,Concert - Live Music
+Concert: ApolloRed1,2025-11-06,19:30:00,Barclays Center,Concert - Live Music
+Concert: Playboi Carti,2025-11-06,19:30:00,Barclays Center,Concert - Live Music
+Concert: Destroy Lonely,2025-11-06,19:30:00,Barclays Center,Concert - Live Music
+NHL: Minnesota Wild at New York Islanders,2025-11-07,19:00:00,UBS Arena,Sports - Hockey
+NBA: Detroit Pistons at Brooklyn Nets,2025-11-07,19:30:00,Barclays Center,Sports - Basketball
+NHL: Pittsburgh Penguins at New Jersey Devils,2025-11-08,12:30:00,Prudential Center,Sports - Hockey
+NHL: New York Islanders at New York Rangers,2025-11-08,19:00:00,Madison Square Garden,Sports - Hockey
+Concert: KAYTRANADA,2025-11-08,19:30:00,Barclays Center,Concert - Live Music
+Concert: Busy P,2025-11-08,19:30:00,Barclays Center,Concert - Live Music
+Concert: Justice,2025-11-08,19:30:00,Barclays Center,Concert - Live Music
+NYC Permit: Bronx Veterans Day Parade,2025-11-09,12:00:00,LAFAYETTE AVENUE between EAST TREMONT AVENUE and SWINTON AVENUE,Mega-Event - Street Closure
+NFL: Cleveland Browns at New York Jets,2025-11-09,13:00:00,MetLife Stadium,Sports - Football
+NBA: Brooklyn Nets at New York Knicks,2025-11-09,18:00:00,Madison Square Garden,Sports - Basketball
+Concert: Busy P,2025-11-09,19:30:00,Barclays Center,Concert - Live Music
+Concert: KAYTRANADA,2025-11-09,19:30:00,Barclays Center,Concert - Live Music
+Concert: Justice,2025-11-09,19:30:00,Barclays Center,Concert - Live Music
+NHL: New York Islanders at New Jersey Devils,2025-11-10,19:00:00,Prudential Center,Sports - Hockey
+NHL: Nashville Predators at New York Rangers,2025-11-10,19:00:00,Madison Square Garden,Sports - Hockey
+NYC Permit: Veterans Day Parade,2025-11-11,10:30:00,WHITNEY AVENUE between PLUMB    2 STREET and GERRITSEN AVENUE,Mega-Event - Street Closure
+NYC Permit: 2025 New York City Veterans Day Parade,2025-11-11,12:30:00,WEST   24 STREET between 7 AVENUE and 6 AVENUE,Mega-Event - Street Closure
+NBA: Toronto Raptors at Brooklyn Nets,2025-11-11,19:30:00,Barclays Center,Sports - Basketball
+NBA: Memphis Grizzlies at New York Knicks,2025-11-11,19:30:00,Madison Square Garden,Sports - Basketball
+NBA: Orlando Magic at New York Knicks,2025-11-12,19:00:00,Madison Square Garden,Sports - Basketball
+NBA: Miami Heat at New York Knicks,2025-11-14,19:00:00,Madison Square Garden,Sports - Basketball
+NFL: Green Bay Packers at New York Giants,2025-11-16,13:00:00,MetLife Stadium,Sports - Football
+NHL: Detroit Red Wings at New York Rangers,2025-11-16,19:00:00,Madison Square Garden,Sports - Hockey
+NBA: Boston Celtics at Brooklyn Nets,2025-11-18,19:30:00,Barclays Center,Sports - Basketball
+Concert: Claire Rosinkranz,2025-11-19,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Maroon 5,2025-11-19,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: NIGHT TRAVELER,2025-11-19,19:30:00,Barclays Center,Concert - Live Music
+Concert: Stevie Nicks,2025-11-19,19:30:00,Barclays Center,Concert - Live Music
+Concert: Claire Rosinkranz,2025-11-20,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Maroon 5,2025-11-20,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Brandy & Monica,2025-11-20,19:30:00,Barclays Center,Concert - Live Music
+Concert: Fat Joe,2025-11-20,19:30:00,Barclays Center,Concert - Live Music
+Concert: Ciara,2025-11-20,19:30:00,Barclays Center,Concert - Live Music
+Concert: Tyrese,2025-11-20,19:30:00,Barclays Center,Concert - Live Music
+Concert: Max B,2025-11-20,19:30:00,Barclays Center,Concert - Live Music
+Concert: Fabolous,2025-11-20,19:30:00,Barclays Center,Concert - Live Music
+Concert: Kelly Rowland,2025-11-20,19:30:00,Barclays Center,Concert - Live Music
+Concert: Jamal Roberts,2025-11-20,19:30:00,Barclays Center,Concert - Live Music
+Concert: Muni Long,2025-11-20,19:30:00,Barclays Center,Concert - Live Music
+NHL: St. Louis Blues at New York Islanders,2025-11-22,15:30:00,UBS Arena,Sports - Hockey
+Concert: Gunna,2025-11-22,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Konstantinos Argiros,2025-11-22,19:30:00,Barclays Center,Concert - Live Music
+NHL: Seattle Kraken at New York Islanders,2025-11-23,17:00:00,UBS Arena,Sports - Hockey
+NHL: Detroit Red Wings at New Jersey Devils,2025-11-24,19:00:00,Prudential Center,Sports - Hockey
+NHL: St. Louis Blues at New York Rangers,2025-11-24,19:00:00,Madison Square Garden,Sports - Hockey
+NBA: New York Knicks at Brooklyn Nets,2025-11-24,19:30:00,Barclays Center,Sports - Basketball
+NHL: St. Louis Blues at New Jersey Devils,2025-11-26,19:00:00,Prudential Center,Sports - Hockey
+NHL: Boston Bruins at New York Islanders,2025-11-26,19:00:00,UBS Arena,Sports - Hockey
+Macy's Thanksgiving Day Parade,2025-11-27,08:30:00,Central Park West / Sixth Avenue,Mega-Event - Parade
+NHL: Philadelphia Flyers at New York Islanders,2025-11-28,16:00:00,UBS Arena,Sports - Hockey
+NBA: Philadelphia 76ers at Brooklyn Nets,2025-11-28,19:30:00,Barclays Center,Sports - Basketball
+NBA: Milwaukee Bucks at New York Knicks,2025-11-28,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Tampa Bay Lightning at New York Rangers,2025-11-29,14:00:00,Madison Square Garden,Sports - Hockey
+NHL: Philadelphia Flyers at New Jersey Devils,2025-11-29,19:00:00,Prudential Center,Sports - Hockey
+NFL: Atlanta Falcons at New York Jets,2025-11-30,13:00:00,MetLife Stadium,Sports - Football
+NHL: Washington Capitals at New York Islanders,2025-11-30,13:00:00,UBS Arena,Sports - Hockey
+NBA: Toronto Raptors at New York Knicks,2025-11-30,18:00:00,Madison Square Garden,Sports - Basketball
+Concert: David Tao,2025-11-30,19:30:00,Barclays Center,Concert - Live Music
+NHL: Columbus Blue Jackets at New Jersey Devils,2025-12-01,19:00:00,Prudential Center,Sports - Hockey
+NBA: Charlotte Hornets at Brooklyn Nets,2025-12-01,19:30:00,Barclays Center,Sports - Basketball
+NHL: Tampa Bay Lightning at New York Islanders,2025-12-02,19:00:00,UBS Arena,Sports - Hockey
+NHL: Dallas Stars at New York Rangers,2025-12-02,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: Dallas Stars at New Jersey Devils,2025-12-03,19:00:00,Prudential Center,Sports - Hockey
+NBA: Charlotte Hornets at New York Knicks,2025-12-03,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Colorado Avalanche at New York Islanders,2025-12-04,19:00:00,UBS Arena,Sports - Hockey
+NBA: Utah Jazz at Brooklyn Nets,2025-12-04,19:30:00,Barclays Center,Sports - Basketball
+NHL: Vegas Golden Knights at New Jersey Devils,2025-12-05,19:00:00,Prudential Center,Sports - Hockey
+NBA: Utah Jazz at New York Knicks,2025-12-05,19:30:00,Madison Square Garden,Sports - Basketball
+NHL: Colorado Avalanche at New York Rangers,2025-12-06,12:30:00,Madison Square Garden,Sports - Hockey
+NBA: New Orleans Pelicans at Brooklyn Nets,2025-12-06,17:00:00,Barclays Center,Sports - Basketball
+NBA: Orlando Magic at New York Knicks,2025-12-07,12:00:00,Madison Square Garden,Sports - Basketball
+NFL: Miami Dolphins at New York Jets,2025-12-07,13:00:00,MetLife Stadium,Sports - Football
+NHL: Vegas Golden Knights at New York Rangers,2025-12-07,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: Vegas Golden Knights at New York Islanders,2025-12-09,19:00:00,UBS Arena,Sports - Hockey
+NHL: Tampa Bay Lightning at New Jersey Devils,2025-12-11,19:00:00,Prudential Center,Sports - Hockey
+NHL: Anaheim Ducks at New York Islanders,2025-12-11,19:00:00,UBS Arena,Sports - Hockey
+Concert: Ed Sheeran,2025-12-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Conan Gray,2025-12-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Nelly,2025-12-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Laufey,2025-12-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Alex Warren,2025-12-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Reneé Rapp,2025-12-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Zara Larsson,2025-12-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Jessie Murph,2025-12-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Ravyn Lenae,2025-12-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Myles Smith,2025-12-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: MONSTA X,2025-12-12,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Kevin Woo,2025-12-12,19:30:00,Madison Square Garden,Concert - Live Music
+NHL: Anaheim Ducks at New Jersey Devils,2025-12-13,12:30:00,Prudential Center,Sports - Hockey
+NHL: Tampa Bay Lightning at New York Islanders,2025-12-13,15:30:00,UBS Arena,Sports - Hockey
+NHL: Montreal Canadiens at New York Rangers,2025-12-13,19:00:00,Madison Square Garden,Sports - Hockey
+Concert: mgk,2025-12-13,19:30:00,Barclays Center,Concert - Live Music
+Concert: Julia Wolf,2025-12-13,19:30:00,Barclays Center,Concert - Live Music
+NHL: Vancouver Canucks at New Jersey Devils,2025-12-14,12:30:00,Prudential Center,Sports - Hockey
+NFL: Washington Commanders at New York Giants,2025-12-14,13:00:00,MetLife Stadium,Sports - Football
+NBA: Milwaukee Bucks at Brooklyn Nets,2025-12-14,18:00:00,Barclays Center,Sports - Basketball
+NHL: Anaheim Ducks at New York Rangers,2025-12-15,19:00:00,Madison Square Garden,Sports - Hockey
+NHL: Vancouver Canucks at New York Rangers,2025-12-16,19:00:00,Madison Square Garden,Sports - Hockey
+Concert: Lorde,2025-12-16,19:30:00,Barclays Center,Concert - Live Music
+Concert: 2hollis,2025-12-16,19:30:00,Barclays Center,Concert - Live Music
+NBA: San Antonio Spurs at New York Knicks,2025-12-16,20:30:00,Madison Square Garden,Sports - Basketball
+Concert: Andrea Bocelli,2025-12-17,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Lorde,2025-12-17,19:30:00,Barclays Center,Concert - Live Music
+Concert: 2hollis,2025-12-17,19:30:00,Barclays Center,Concert - Live Music
+NBA: Miami Heat at Brooklyn Nets,2025-12-18,19:30:00,Barclays Center,Sports - Basketball
+Concert: Andrea Bocelli,2025-12-18,19:30:00,Madison Square Garden,Concert - Live Music
+NBA: Philadelphia 76ers at New York Knicks,2025-12-19,19:00:00,Madison Square Garden,Sports - Basketball
+NHL: Vancouver Canucks at New York Islanders,2025-12-19,19:00:00,UBS Arena,Sports - Hockey
+NHL: Philadelphia Flyers at New York Rangers,2025-12-20,12:30:00,Madison Square Garden,Sports - Hockey
+NFL: Minnesota Vikings at New York Giants,2025-12-21,13:00:00,MetLife Stadium,Sports - Football
+NBA: Toronto Raptors at Brooklyn Nets,2025-12-21,18:00:00,Barclays Center,Sports - Basketball
+NBA: Miami Heat at New York Knicks,2025-12-21,18:00:00,Madison Square Garden,Sports - Basketball
+NHL: Buffalo Sabres at New Jersey Devils,2025-12-21,19:00:00,Prudential Center,Sports - Hockey
+Concert: Jesse McCartney,2025-12-22,19:30:00,Barclays Center,Concert - Live Music
+Concert: Jonas Brothers,2025-12-22,19:30:00,Barclays Center,Concert - Live Music
+Concert: Deleasa,2025-12-22,19:30:00,Barclays Center,Concert - Live Music
+Concert: Franklin Jonas & The Byzantines,2025-12-22,19:30:00,Barclays Center,Concert - Live Music
+NHL: New Jersey Devils at New York Islanders,2025-12-23,19:00:00,UBS Arena,Sports - Hockey
+Concert: Rod Wave,2025-12-23,19:30:00,Barclays Center,Concert - Live Music
+NBA: Cleveland Cavaliers at New York Knicks,2025-12-25,12:00:00,Madison Square Garden,Sports - Basketball
+NHL: New York Rangers at New York Islanders,2025-12-27,18:00:00,UBS Arena,Sports - Hockey
+NHL: Washington Capitals at New Jersey Devils,2025-12-27,19:00:00,Prudential Center,Sports - Hockey
+NFL: New England Patriots at New York Jets,2025-12-28,13:00:00,MetLife Stadium,Sports - Football
+Concert: Phish,2025-12-28,19:30:00,Madison Square Garden,Concert - Live Music
+NBA: Golden State Warriors at Brooklyn Nets,2025-12-29,19:30:00,Barclays Center,Sports - Basketball
+Concert: Phish,2025-12-29,19:30:00,Madison Square Garden,Concert - Live Music
+Concert: Phish,2025-12-30,19:30:00,Madison Square Garden,Concert - Live Music
+New Year's Eve Times Square,2025-12-31,15:00:00,Times Square,Mega-Event - Gridlock Alert
+Concert: Phish,2025-12-31,19:30:00,Madison Square Garden,Concert - Live Music

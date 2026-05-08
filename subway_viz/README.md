@@ -6,7 +6,7 @@ An interactive subway ridership visualizer with clustering and O-D visualization
 
 ### Download datasets
 
-Download `subway_2025` and `subway_hourly_2025` datasets.
+Download `subway_2025` and `subway_hourly_2025` datasets.  These are duckdb files.
 
 ### Install dependencies
 

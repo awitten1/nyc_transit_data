@@ -4,6 +4,12 @@ An interactive subway ridership visualizer with clustering and O-D visualization
 
 ## Setup
 
+### Download datasets
+
+Download `subway_2025` and `subway_hourly_2025` datasets.
+
+### Install dependencies
+
 Using conda:
 
 ```bash

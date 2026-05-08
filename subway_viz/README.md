@@ -27,7 +27,8 @@ Open http://localhost:8765
 
 ## Usage
 
-- **Left map**: drag to select origin stations (toggle Select/Pan mode in toolbar)
-- **Right map**: shows destination stations sized and colored by ridership volume
+- Left map: drag to select origin stations (toggle Select/Pan mode in toolbar)
+- Right map: shows destination stations sized and colored by ridership volume
 - Click individual stations or click and drag to select multiple stations.
 - Click "clusters" on the top right to see clusters.
+- From the "clusters" view interactively adjust the number of clusters using the slide bar at the top
